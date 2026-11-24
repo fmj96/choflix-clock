@@ -200,6 +200,11 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
             }
         }
 
+        // 야간 '추가로 어둡게' — 화면 밝기 최저보다 더 어둡게 검은 막을 덧씌운다. 모서리 버튼은 그 위라 그대로 눌린다.
+        if (night && settings.dimOverlayPercent > 0) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = settings.dimOverlayPercent / 100f)))
+        }
+
         // 오른쪽 위 모서리: 전구(기기 켜기/끄기)와 톱니바퀴(설정). 화면 아무 데나 스쳐도
         // 열리지 않게 이 둘만 버튼으로 둔다. 번인 방지 이동도 같이 받는다.
         Row(Modifier.align(Alignment.TopEnd).padding(4.dp).offset(dx, dy)) {

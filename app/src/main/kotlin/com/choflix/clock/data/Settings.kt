@@ -42,10 +42,14 @@ class Settings(context: Context) {
     var dimEnd: Int
         get() = p.getInt("dimEnd", 6)
         set(v) = p.edit().putInt("dimEnd", v).apply()
-    /** 그 시간대의 밝기 상한(%). */
+    /** 그 시간대의 밝기 상한(%, 폰 밝기 막대 기준). */
     var dimMaxPercent: Int
         get() = p.getInt("dimMaxPercent", 15)
         set(v) = p.edit().putInt("dimMaxPercent", v).apply()
+    /** 화면 밝기를 최저로 내려도 밝을 때 — 그 시간대에 화면 위에 덧씌우는 검은 막의 진하기(%). */
+    var dimOverlayPercent: Int
+        get() = p.getInt("dimOverlayPercent", 0)
+        set(v) = p.edit().putInt("dimOverlayPercent", v).apply()
     /**
      * 그 시간대에 글자를 눈부심 적은 엠버색으로. 기본은 끔 — 켜 두면 그 시간대에는 고른 색 대신
      * 엠버가 보여 '색을 바꿔도 안 바뀐다'로 보였다(v0.5.0 실사용).

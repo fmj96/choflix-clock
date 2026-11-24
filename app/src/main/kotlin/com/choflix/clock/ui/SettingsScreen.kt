@@ -434,8 +434,17 @@ private fun DimmerSection(settings: Settings) {
         color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp,
     )
     Slider(
-        value = max, onValueChange = { max = it }, valueRange = 1f..60f,
+        value = max, onValueChange = { max = it }, valueRange = 0f..60f,
         onValueChangeFinished = { settings.dimMaxPercent = max.toInt() },
+    )
+    var overlay by remember { mutableStateOf(settings.dimOverlayPercent.toFloat()) }
+    Text(
+        "추가로 어둡게 ${overlay.toInt()}% — 밝기를 0%로 해도 밝으면, 화면 위에 검은 막을 덧씌워 더 어둡게 합니다",
+        color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp,
+    )
+    Slider(
+        value = overlay, onValueChange = { overlay = it }, valueRange = 0f..90f,
+        onValueChangeFinished = { settings.dimOverlayPercent = overlay.toInt() },
     )
     Toggle("이 시간대에는 글자를 엠버색(눈부심 적음)으로", amber) { amber = it; settings.dimAmber = it }
 }

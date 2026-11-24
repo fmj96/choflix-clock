@@ -122,7 +122,10 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     private fun applyBrightness() {
         // 센서가 없는 기기는 시스템 밝기를 따르고, 새벽에만 낮춘다.
         var b = if (smoothed < 0) -1f else smoothed
-        val cap = settings.dimMaxPercent / 100f
+        // 설정의 %는 폰 밝기 막대 기준(눈에 보이는 밝기)이다. 창 밝기 값은 실제 빛의 양이라
+        // 그대로 쓰면 15%가 막대 절반쯤으로 밝게 보였다(실사용) — 감마 2.2 로 바꿔 넣는다.
+        // 0 은 일부 기기에서 백라이트를 아예 끄므로 아주 작은 값에서 멈춘다.
+        val cap = Math.pow(settings.dimMaxPercent / 100.0, 2.2).toFloat().coerceAtLeast(0.004f)
         if (night) b = if (b < 0) cap else b.coerceAtMost(cap)
         if (abs(b - applied) < 0.01f) return
         applied = b
