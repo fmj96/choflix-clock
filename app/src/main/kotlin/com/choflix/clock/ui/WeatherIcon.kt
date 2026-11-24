@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AcUnit
-import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Thunderstorm
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbSunny
@@ -49,7 +49,8 @@ fun WeatherIcon(w: Weather, modifier: Modifier, line: Color, night: Boolean) {
     // 새벽 엠버 모드에서는 색을 빼고 한 가지 톤으로.
     val sunMoon: Pair<ImageVector, Color> =
         if (w.isDay) Icons.Filled.WbSunny to (if (night) line else Sun)
-        else Icons.Filled.NightsStay to (if (night) line else Moon)
+        // NightsStay 는 달에 작은 구름이 붙어 있어 맑은 밤도 구름 낀 밤처럼 보였다 — 구름 없는 초승달.
+        else Icons.Filled.Bedtime to (if (night) line else Moon)
     val drop = if (night) line else Drop
 
     Box(modifier) {

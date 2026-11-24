@@ -133,11 +133,11 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
         ) {
             // ── 왼쪽: 오늘 날씨 ──
             BoxWithConstraints(Modifier.weight(0.3f).fillMaxHeight()) {
-                val lo = weather?.minC?.roundToInt()?.toString() ?: "--"
-                val hi = weather?.maxC?.roundToInt()?.toString() ?: "--"
-                // 폭에 맞춘다: 숫자(0.816em씩) + °C 두 개와 가운데 줄(합쳐 약 1.8em). 영하 두 자리도 들어가게.
+                // 지금 바깥 기온 하나만(최저/최고는 사용자 요청으로 뺐다).
+                val outside = weather?.currentC?.roundToInt()?.toString() ?: "--"
+                // 폭에 맞춘다: 숫자(0.816em씩) + °C(약 0.5em). 영하 두 자리도 들어가게.
                 val leftW = maxWidth
-                val tempSize = minOf(h * 0.17f, leftW / ((lo.length + hi.length) * 0.816f + 1.8f))
+                val tempSize = minOf(h * 0.22f, leftW / (outside.length * 0.816f + 0.6f))
                 Column(
                     Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -147,14 +147,7 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                     Box(Modifier.size(minOf(h * 0.42f, leftW * 0.8f)), contentAlignment = Alignment.Center) {
                         weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main, night) }
                     }
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Temp(lo, warm, tempSize, d)
-                        Box(
-                            Modifier.padding(horizontal = tempSize * 0.12f).padding(bottom = tempSize * 0.42f)
-                                .width(tempSize * 0.4f).height(2.dp).background(warm)
-                        )
-                        Temp(hi, warm, tempSize, d)
-                    }
+                    Temp(outside, warm, tempSize, d)
                 }
             }
 
