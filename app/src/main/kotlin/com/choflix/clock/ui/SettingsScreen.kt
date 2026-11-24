@@ -1,5 +1,8 @@
 package com.choflix.clock.ui
 
+import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -55,6 +59,10 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
     MaterialTheme(colorScheme = darkColorScheme()) {
         val scope = rememberCoroutineScope()
+        val context = LocalContext.current
+        val ignoringOptimizations = remember {
+            context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName)
+        }
         val battery by HomeState.battery.collectAsState()
         val tuyaError by HomeState.tuyaError.collectAsState()
 
@@ -178,6 +186,31 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 NumberField("과열 차단 °C", maxTemp, Modifier.weight(1f)) {
                     maxTemp = it; it.toIntOrNull()?.takeIf { v -> v in 30..50 }?.let { v -> settings.maxTempC = v }
                 }
+            }
+
+            Section("계속 켜 두기 (샤오미·삼성 등)")
+            Text(
+                "폰이 절전을 위해 이 앱을 몰래 끄면 충전 제어가 멈춥니다. 아래 두 가지를 해 두세요.\n" +
+                    "· 배터리 최적화에서 빼기\n" +
+                    "· 앱 정보 → 샤오미는 '자동 시작' 켜기, '배터리 절약'을 '제한 없음'으로\n" +
+                    "· 최근 앱 화면에서 이 앱을 길게 눌러 잠금(자물쇠)",
+                color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = {
+                    runCatching {
+                        context.startActivity(
+                            Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                Uri.parse("package:${context.packageName}"))
+                        )
+                    }
+                }) { Text(if (ignoringOptimizations) "배터리 최적화 제외됨 ✓" else "배터리 최적화에서 빼기") }
+                OutlinedButton(onClick = {
+                    context.startActivity(
+                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:${context.packageName}"))
+                    )
+                }) { Text("앱 정보 열기") }
             }
 
             HorizontalDivider(Modifier.padding(top = 12.dp))
