@@ -33,7 +33,7 @@ import kotlin.math.pow
 
 /**
  * 가로 전체화면 시계. 화면을 끄지 않고, 조도 센서로 밝기를 스스로 맞춘다.
- * 아무 데나 길게 누르면 설정.
+ * 오른쪽 위 전구는 기기 화면, 톱니바퀴는 설정.
  */
 class ClockActivity : ComponentActivity(), SensorEventListener {
 

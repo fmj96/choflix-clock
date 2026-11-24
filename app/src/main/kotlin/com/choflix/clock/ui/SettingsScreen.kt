@@ -183,7 +183,7 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             HorizontalDivider(Modifier.padding(top = 12.dp))
             Text(
                 "Choflix Clock v${BuildConfig.VERSION_NAME} · github.com/fmj96/choflix-clock\n" +
-                    "시계 오른쪽 위 전구를 누르면 기기 켜기/끄기, 화면을 길게 누르면 이 설정이 열립니다.",
+                    "시계 오른쪽 위 전구는 기기 켜기/끄기, 톱니바퀴는 이 설정입니다.",
                 color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp,
             )
             Spacer(Modifier.height(40.dp))

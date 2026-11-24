@@ -11,7 +11,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -33,6 +32,7 @@ import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -48,7 +48,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -117,8 +116,7 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
             .background(
                 if (night) Brush.linearGradient(listOf(Color.Black, Color.Black))
                 else Brush.linearGradient(listOf(Color(0xFF0E1A2E), Color(0xFF02040A)))
-            )
-            .pointerInput(Unit) { detectTapGestures(onLongPress = { onOpenSettings() }) },
+            ),
     ) {
         val d = LocalDensity.current
         val h = maxHeight - 40.dp
@@ -220,16 +218,15 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
             }
         }
 
-        // 오른쪽 위 모서리의 전구 — 기기 켜기/끄기 화면. 화면 아무 데나 스쳐도 열리지 않게
-        // 이것만 버튼으로 둔다. 번인 방지 이동도 같이 받는다.
-        IconButton(
-            onClick = onOpenDevices,
-            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).offset(dx, dy).size(48.dp),
-        ) {
-            Icon(
-                Icons.Outlined.Lightbulb, "기기",
-                tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp),
-            )
+        // 오른쪽 위 모서리: 전구(기기 켜기/끄기)와 톱니바퀴(설정). 화면 아무 데나 스쳐도
+        // 열리지 않게 이 둘만 버튼으로 둔다. 번인 방지 이동도 같이 받는다.
+        Row(Modifier.align(Alignment.TopEnd).padding(4.dp).offset(dx, dy)) {
+            IconButton(onClick = onOpenDevices, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.Lightbulb, "기기", tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp))
+            }
+            IconButton(onClick = onOpenSettings, modifier = Modifier.size(48.dp)) {
+                Icon(Icons.Outlined.Settings, "설정", tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp))
+            }
         }
     }
 }
