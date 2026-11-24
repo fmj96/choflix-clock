@@ -27,6 +27,9 @@ data class TuyaDevice(
     val online: Boolean,
     /** 켜고 끌 수 있는 스위치들. 비어 있으면 센서 같은 읽기 전용 기기. */
     val switches: List<TuyaSwitch>,
+    /** 온습도 센서면 그 값(목록에 딸려 온 상태로 어림한 것). */
+    val temperatureC: Double? = null,
+    val humidity: Int? = null,
 )
 
 /**
@@ -114,13 +117,35 @@ class TuyaCloudClient(
         out.sortedWith(compareByDescending<TuyaDevice> { it.switches.isNotEmpty() }.thenBy { it.name })
     }
 
-    private fun device(o: JSONObject) = TuyaDevice(
-        id = o.optString("id"),
-        name = o.optString("name"),
-        category = o.optString("category"),
-        online = o.optBoolean("online", true),
-        switches = switchesOf(o.optJSONArray("status")),
-    )
+    private fun device(o: JSONObject): TuyaDevice {
+        val status = o.optJSONArray("status")
+        val (t, h) = climateOf(status)
+        return TuyaDevice(
+            id = o.optString("id"),
+            name = o.optString("name"),
+            category = o.optString("category"),
+            online = o.optBoolean("online", true),
+            switches = switchesOf(status),
+            temperatureC = t,
+            humidity = h,
+        )
+    }
+
+    /** 상태 목록 속 온·습도. 소수점 자리(scale)는 사양을 묻지 않고 값 크기로 어림한다. */
+    private fun climateOf(status: JSONArray?): Pair<Double?, Int?> {
+        if (status == null) return null to null
+        var t: Double? = null
+        var h: Int? = null
+        for (i in 0 until status.length()) {
+            val o = status.optJSONObject(i) ?: continue
+            val v = o.optDouble("value").takeIf { !it.isNaN() } ?: continue
+            when (o.optString("code")) {
+                "va_temperature", "temp_current", "temp_indoor" -> if (t == null) t = if (v > 60) v / 10 else v
+                "va_humidity", "humidity_value", "humidity_indoor" -> if (h == null) h = (if (v > 100) v / 10 else v).toInt()
+            }
+        }
+        return t to h
+    }
 
     /** 상태 목록에서 켜고 끌 수 있는 것만(switch, switch_1.., switch_led 처럼 참/거짓 값). */
     private fun switchesOf(status: JSONArray?): List<TuyaSwitch> {

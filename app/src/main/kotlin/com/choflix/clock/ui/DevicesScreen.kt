@@ -81,7 +81,11 @@ fun DevicesScreen(settings: Settings, onClose: () -> Unit) {
         loading = true
         scope.launch {
             runCatching { c.devices() }
-                .onSuccess { HomeState.devices.value = it; error = null }
+                // 켜고 끌 수도, 읽을 값도 없는 기기(IR 리모컨으로 만든 가상 기기 등)는 뺀다.
+                .onSuccess { l ->
+                    HomeState.devices.value = l.filter { it.switches.isNotEmpty() || it.temperatureC != null }
+                    error = null
+                }
                 .onFailure { error = "기기 목록을 못 받았습니다: ${it.message}" }
             loading = false
         }
@@ -187,7 +191,13 @@ private fun DeviceCard(d: TuyaDevice, pending: Map<String, Boolean>, onToggle: (
         }
         when {
             !d.online -> Text("오프라인", color = Color(0xFFFF8A8A), fontSize = 14.sp)
-            d.switches.isEmpty() -> Text("켜고 끌 수 없는 기기", color = Color.White.copy(alpha = 0.4f), fontSize = 13.sp)
+            d.switches.isEmpty() -> Text(
+                listOfNotNull(
+                    d.temperatureC?.let { "%.1f°C".format(java.util.Locale.US, it) },
+                    d.humidity?.let { "$it%" },
+                ).joinToString("  "),
+                color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+            )
             single != null -> {
                 val busy = pending.containsKey("${d.id}/${single.code}")
                 val on = pending["${d.id}/${single.code}"] ?: single.on
