@@ -21,5 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ---
-The digits use Barlow Condensed (c) The Barlow Project Authors, SIL Open Font License 1.1 —
-see docs/licenses/Barlow-OFL.txt.
+Bundled fonts (SIL Open Font License 1.1):
+- Barlow, Barlow Condensed (c) The Barlow Project Authors — docs/licenses/Barlow-OFL.txt
+- DSEG (c) keshikan — docs/licenses/DSEG-OFL.txt

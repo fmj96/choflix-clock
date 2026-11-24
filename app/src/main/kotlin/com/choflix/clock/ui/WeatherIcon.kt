@@ -20,20 +20,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.choflix.clock.data.Weather
 
-private val Sun = Color(0xFFFFC83D)
-private val Moon = Color(0xFF3D8BFF)
-private val Drop = Color(0xFF5AB0FF)
-
 private enum class Sky { Clear, Partly, Cloudy, Fog, Rain, Snow, Thunder }
 
 /**
- * 사진처럼 흰 테두리 구름 + 색 있는 해/달. 큰 그림 하나에 작은 덧그림 하나.
+ * 테두리 구름 + 해/달. 큰 그림 하나에 작은 덧그림 하나. 모두 설정한 한 가지 색으로 그린다.
  *
  * 날씨 코드만 믿지 않는다: open-meteo 의 current 는 모델 예보를 보간한 값이라 갑자기 오는 비를
  * 놓칠 때가 있다. 같이 오는 강수량·구름양으로 앞뒤를 맞춘다.
  */
 @Composable
-fun WeatherIcon(w: Weather, modifier: Modifier, line: Color, night: Boolean) {
+fun WeatherIcon(w: Weather, modifier: Modifier, line: Color) {
     val sky = when {
         w.precipitation > 0.05 && w.code in 0..3 -> if (w.currentC <= 0.5) Sky.Snow else Sky.Rain
         w.code in 0..2 && w.cloudPercent >= 80 -> Sky.Cloudy
@@ -46,12 +42,9 @@ fun WeatherIcon(w: Weather, modifier: Modifier, line: Color, night: Boolean) {
         w.code in 95..99 -> Sky.Thunder
         else -> Sky.Cloudy
     }
-    // 새벽 엠버 모드에서는 색을 빼고 한 가지 톤으로.
-    val sunMoon: Pair<ImageVector, Color> =
-        if (w.isDay) Icons.Filled.WbSunny to (if (night) line else Sun)
-        // NightsStay 는 달에 작은 구름이 붙어 있어 맑은 밤도 구름 낀 밤처럼 보였다 — 구름 없는 초승달.
-        else Icons.Filled.Bedtime to (if (night) line else Moon)
-    val drop = if (night) line else Drop
+    // NightsStay 는 달에 작은 구름이 붙어 있어 맑은 밤도 구름 낀 밤처럼 보였다 — 구름 없는 초승달.
+    val sunMoon: Pair<ImageVector, Color> = (if (w.isDay) Icons.Filled.WbSunny else Icons.Filled.Bedtime) to line
+    val drop = line
 
     Box(modifier) {
         when (sky) {

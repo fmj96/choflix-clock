@@ -45,14 +45,15 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     private var smoothed = -1f
     private var applied = -2f
 
-    /** 새벽(00~06시)이면 엠버 톤·밝기 상한. */
-    private var night by mutableStateOf(isNight())
+    /** 설정한 야간 시간대(기본 0~6시)면 밝기 상한·엠버 톤. */
+    private var night by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
     private var showDevices by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = Settings(this)
+        night = isNight()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         hideSystemBars()
@@ -79,7 +80,12 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
         setContent {
             BackHandler(enabled = showSettings || showDevices) { showSettings = false; showDevices = false }
             when {
-                showSettings -> SettingsScreen(settings, onClose = { showSettings = false; hideSystemBars() })
+                showSettings -> SettingsScreen(settings, onClose = {
+                    showSettings = false
+                    hideSystemBars()
+                    // 자동 밝기 시간대·상한을 바꿨을 수 있다 — 바로 다시 건다.
+                    night = isNight(); applied = -2f; applyBrightness()
+                })
                 showDevices -> DevicesScreen(settings, onClose = { showDevices = false })
                 else -> ClockScreen(
                     settings, night = night,
@@ -116,7 +122,8 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     private fun applyBrightness() {
         // 센서가 없는 기기는 시스템 밝기를 따르고, 새벽에만 낮춘다.
         var b = if (smoothed < 0) -1f else smoothed
-        if (night) b = if (b < 0) NIGHT_CAP else b.coerceAtMost(NIGHT_CAP)
+        val cap = settings.dimMaxPercent / 100f
+        if (night) b = if (b < 0) cap else b.coerceAtMost(cap)
         if (abs(b - applied) < 0.01f) return
         applied = b
         window.attributes = window.attributes.apply { screenBrightness = b }
@@ -129,10 +136,9 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
         }
     }
 
-    private fun isNight() = LocalTime.now().hour < 6
+    private fun isNight() = settings.isDimHour(LocalTime.now().hour)
 
     private companion object {
         const val ALPHA = 0.2f
-        const val NIGHT_CAP = 0.15f
     }
 }

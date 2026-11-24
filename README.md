@@ -6,7 +6,8 @@
 - 실내 온·습도 — Tuya(스마트라이프) 온습도 센서
 - Tuya 기기 켜기/끄기 화면
 - **배터리 부풀음 방지** — Tuya 스마트 플러그로 배터리를 40~50% 사이에서만 충전, 38°C 이상이면 충전 차단
-- 조도 센서로 밝기 자동 조절, 새벽(0~6시)에는 밝기 15% 상한 + 눈부심 적은 엠버색
+- 조도 센서로 밝기 자동 조절, 정한 시간대(기본 0~6시)에는 밝기 상한(기본 15%) + 엠버색 — 설정에서 변경
+- 글자·아이콘 색(기본 흰색)과 숫자 글꼴(Barlow Condensed·Barlow·전자시계·폰 기본)을 설정에서 선택
 - OLED 번인 방지 — 1분마다 화면 전체를 16dp 안에서 조금씩 이동
 - 서버 없이 폰 혼자 동작 (Tuya Cloud API 를 앱에서 바로 호출)
 
@@ -66,4 +67,4 @@ source env.sh            # JDK 17, Android SDK 위치
 
 ## 라이선스
 
-MIT. 숫자 글꼴은 [Barlow Condensed](https://github.com/jpt/barlow) (SIL OFL 1.1).
+MIT. 숫자 글꼴 [Barlow](https://github.com/jpt/barlow), [DSEG](https://github.com/keshikan/DSEG) (SIL OFL 1.1).

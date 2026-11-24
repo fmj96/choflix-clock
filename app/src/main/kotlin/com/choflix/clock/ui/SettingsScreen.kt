@@ -5,6 +5,12 @@ import android.net.Uri
 import android.os.PowerManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.Slider
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,6 +117,15 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
 
             Section("시계")
             Toggle("24시간 표시", use24h) { use24h = it; settings.use24h = it }
+
+            Section("글자·아이콘 색")
+            ColorPicker(settings)
+
+            Section("숫자 글꼴")
+            FontPicker(settings)
+
+            Section("시간대별 자동 밝기")
+            DimmerSection(settings)
 
             Section("날씨 위치")
             Text(
@@ -345,5 +360,87 @@ private fun UpdateSection() {
             }
         }) { Text("다시 확인") }
         if (status.isNotEmpty()) Text(status, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+    }
+}
+
+@Composable
+private fun ColorPicker(settings: Settings) {
+    var current by remember { mutableStateOf(settings.color) }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        ColorPresets.forEach { (name, argb) ->
+            val selected = current == argb
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color(argb))
+                        .border(if (selected) 3.dp else 1.dp, if (selected) Color(0xFF3D8BFF) else Color.White.copy(alpha = 0.3f), CircleShape)
+                        .clickable { current = argb; settings.color = argb },
+                )
+                Text(name, color = Color.White.copy(alpha = if (selected) 1f else 0.6f), fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FontPicker(settings: Settings) {
+    var current by remember { mutableStateOf(DigitFont.of(settings.font)) }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        DigitFont.entries.forEach { f ->
+            val selected = f == current
+            Column(
+                Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(if (selected) 2.dp else 1.dp, if (selected) Color(0xFF3D8BFF) else Color.White.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                    .clickable { current = f; settings.font = f.name }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("10:30", style = f.style(30.sp, Color.White))
+                Text(f.label, color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DimmerSection(settings: Settings) {
+    var enabled by remember { mutableStateOf(settings.dimEnabled) }
+    var start by remember { mutableStateOf(settings.dimStart) }
+    var end by remember { mutableStateOf(settings.dimEnd) }
+    var max by remember { mutableStateOf(settings.dimMaxPercent.toFloat()) }
+    var amber by remember { mutableStateOf(settings.dimAmber) }
+
+    Toggle("정해진 시간대에 화면을 어둡게", enabled) { enabled = it; settings.dimEnabled = it }
+    if (!enabled) return
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("시작", color = Color.White)
+        HourStepper(start) { start = it; settings.dimStart = it }
+        Text("~  끝", color = Color.White)
+        HourStepper(end) { end = it; settings.dimEnd = it }
+    }
+    Text(
+        "밝기 상한 ${max.toInt()}% — 이 시간대에는 조도 센서가 밝다고 해도 이보다 밝아지지 않습니다",
+        color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp,
+    )
+    Slider(
+        value = max, onValueChange = { max = it }, valueRange = 1f..60f,
+        onValueChangeFinished = { settings.dimMaxPercent = max.toInt() },
+    )
+    Toggle("이 시간대에는 글자를 엠버색(눈부심 적음)으로", amber) { amber = it; settings.dimAmber = it }
+}
+
+/** 0~23시를 −/+ 로 고른다. */
+@Composable
+private fun HourStepper(hour: Int, onChange: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedButton(onClick = { onChange((hour + 23) % 24) }, modifier = Modifier.size(44.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { Text("−") }
+        Text("%02d시".format(hour), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 10.dp))
+        OutlinedButton(onClick = { onChange((hour + 1) % 24) }, modifier = Modifier.size(44.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { Text("+") }
     }
 }

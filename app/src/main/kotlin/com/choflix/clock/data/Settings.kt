@@ -16,6 +16,41 @@ class Settings(context: Context) {
         get() = p.getBoolean("use24h", false)
         set(v) = p.edit().putBoolean("use24h", v).apply()
 
+    // ── 화면 ──
+    /** 글자·아이콘 색(ARGB). 기본 흰색. */
+    var color: Long
+        get() = p.getLong("color", 0xFFFFFFFF)
+        set(v) = p.edit().putLong("color", v).apply()
+    /** 숫자 글꼴([com.choflix.clock.ui.DigitFont] 이름). */
+    var font: String
+        get() = p.getString("font", "Condensed") ?: "Condensed"
+        set(v) = p.edit().putString("font", v).apply()
+
+    // ── 시간대별 자동 밝기(디머) ──
+    var dimEnabled: Boolean
+        get() = p.getBoolean("dimEnabled", true)
+        set(v) = p.edit().putBoolean("dimEnabled", v).apply()
+    /** 시작·끝 시각(0~23시). 시작이 끝보다 크면 자정을 넘긴다(예: 22시 ~ 6시). */
+    var dimStart: Int
+        get() = p.getInt("dimStart", 0)
+        set(v) = p.edit().putInt("dimStart", v).apply()
+    var dimEnd: Int
+        get() = p.getInt("dimEnd", 6)
+        set(v) = p.edit().putInt("dimEnd", v).apply()
+    /** 그 시간대의 밝기 상한(%). */
+    var dimMaxPercent: Int
+        get() = p.getInt("dimMaxPercent", 15)
+        set(v) = p.edit().putInt("dimMaxPercent", v).apply()
+    /** 그 시간대에 글자를 눈부심 적은 엠버색으로. */
+    var dimAmber: Boolean
+        get() = p.getBoolean("dimAmber", true)
+        set(v) = p.edit().putBoolean("dimAmber", v).apply()
+
+    fun isDimHour(hour: Int): Boolean {
+        if (!dimEnabled || dimStart == dimEnd) return false
+        return if (dimStart < dimEnd) hour in dimStart until dimEnd else hour >= dimStart || hour < dimEnd
+    }
+
     // ── 날씨 위치. 비어 있으면 IP 로 대략 찾는다. ──
     var place: String
         get() = p.getString("place", "") ?: ""
