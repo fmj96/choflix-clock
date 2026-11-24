@@ -26,6 +26,11 @@ class Settings(context: Context) {
         get() = p.getString("font", "Condensed") ?: "Condensed"
         set(v) = p.edit().putString("font", v).apply()
 
+    /** 큰 시각만 아주 굵게(Black). */
+    var heavyClock: Boolean
+        get() = p.getBoolean("heavyClock", true)
+        set(v) = p.edit().putBoolean("heavyClock", v).apply()
+
     // ── 시간대별 자동 밝기(디머) ──
     var dimEnabled: Boolean
         get() = p.getBoolean("dimEnabled", true)

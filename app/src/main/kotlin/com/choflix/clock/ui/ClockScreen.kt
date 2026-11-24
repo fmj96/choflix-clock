@@ -186,14 +186,14 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                 }
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     // 폭과 높이 중 먼저 닿는 쪽에 맞춘다.
-                    val bigSize = minOf(maxHeight, maxWidth / font.em("88:88"))
+                    val bigSize = minOf(maxHeight, maxWidth / font.timeEm(settings.heavyClock))
                     val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
                     val hh = if (settings.use24h) "%02d".format(hour) else hour.toString()
                     // 폭이 먼저 닿아 위아래가 남는다 — 남는 높이만큼 세로로 늘린다(최대 1.7배). 사용자 요청.
                     val stretch = (maxHeight * 0.94f / (bigSize * font.digitHeight)).coerceIn(1f, 1.7f)
                     // 콜론은 깜빡이지 않는다(사용자 요청).
                     Text(
-                        "$hh:%02d".format(now.minute), style = font.style(bigSize.sp(), main), maxLines = 1, softWrap = false,
+                        "$hh:%02d".format(now.minute), style = font.timeStyle(bigSize.sp(), main, settings.heavyClock), maxLines = 1, softWrap = false,
                         modifier = Modifier.graphicsLayer { scaleY = stretch },
                     )
                 }

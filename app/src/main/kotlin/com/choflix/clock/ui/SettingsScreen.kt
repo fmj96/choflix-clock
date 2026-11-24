@@ -123,6 +123,8 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
 
             Section("숫자 글꼴")
             FontPicker(settings)
+            var heavy by remember { mutableStateOf(settings.heavyClock) }
+            Toggle("큰 시각만 아주 굵게", heavy) { heavy = it; settings.heavyClock = it }
 
             Section("시간대별 자동 밝기")
             DimmerSection(settings)
