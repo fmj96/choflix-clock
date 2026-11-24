@@ -36,7 +36,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * 시계가 켜져 있는 내내 도는 포그라운드 서비스.
  *
  *  - 배터리를 40~50% 사이에 묶어 둔다(스마트 플러그 ON/OFF). 38°C 이상이면 잔량과 상관없이 끈다.
- *  - 실내 온·습도(2분)와 바깥 날씨(30분)를 받아 [HomeState] 에 넣는다.
+ *  - 실내 온·습도(5분)와 바깥 날씨(30분)를 받아 [HomeState] 에 넣는다.
  *
  * 플러그 명령은 원하는 상태가 바뀔 때 한 번 보내고, 그 뒤 실제 충전 여부가 따라오지 않으면
  * 2분마다 다시 보낸다. 5분 넘게 어긋나면 화면에 경고를 띄운다(플러그가 안 꺼지면 결국 만충).
@@ -73,7 +73,9 @@ class BatteryPlugMonitorService : Service() {
                 registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let(::onBattery)
             }
         }
-        scope.launch { loop(2 * 60_000L) { pollIndoor() } }
+        // 실내 온·습도는 5분마다. Tuya 무료(체험판) API 는 한 달 호출 수에 한도가 있다 — 2분이면
+        // 센서만으로 한 달 2만 번이 넘어 한도에 닿을 수 있다. 실내 기온은 그렇게 빨리 변하지 않는다.
+        scope.launch { loop(5 * 60_000L) { pollIndoor() } }
         scope.launch { loop(30 * 60_000L) { pollWeather() } }
     }
 
@@ -149,7 +151,10 @@ class BatteryPlugMonitorService : Service() {
 
         val now = System.currentTimeMillis()
         if (want == plugged) mismatchSince = 0 else if (mismatchSince == 0L) mismatchSince = now
-        val retry = want != plugged && now - lastSentAt > 2 * 60_000
+        // 어긋나면 2분마다 다시 보내되, 5분 넘게 안 맞으면(플러그가 꺼져 있거나 오프라인) 15분 간격으로
+        // 늦춘다 — 한 달 API 호출 한도를 재시도로 다 쓰지 않게.
+        val gap = if (mismatchSince != 0L && now - mismatchSince > 5 * 60_000) 15 * 60_000 else 2 * 60_000
+        val retry = want != plugged && now - lastSentAt > gap
         if (want != lastWant || retry) {
             lastWant = want
             lastSentAt = now
