@@ -18,6 +18,17 @@ data class Indoor(val temperatureC: Double?, val humidity: Int?)
 
 class TuyaException(message: String) : Exception(message)
 
+data class TuyaSwitch(val code: String, val on: Boolean)
+
+data class TuyaDevice(
+    val id: String,
+    val name: String,
+    val category: String,
+    val online: Boolean,
+    /** 켜고 끌 수 있는 스위치들. 비어 있으면 센서 같은 읽기 전용 기기. */
+    val switches: List<TuyaSwitch>,
+)
+
 /**
  * Tuya Cloud OpenAPI 를 앱에서 바로 부른다(중간 서버 없음).
  *
@@ -63,6 +74,63 @@ class TuyaCloudClient(
             "commands", JSONArray().put(JSONObject().put("code", switchCode).put("value", on))
         ).toString()
         request("POST", "/v1.0/devices/$plugId/commands", body) == true
+    }
+
+    /** 단일 상태 조회 — 버튼을 누른 뒤 실제로 바뀌었는지 다시 읽을 때. */
+    suspend fun switches(deviceId: String): List<TuyaSwitch> = withContext(Dispatchers.IO) {
+        switchesOf(request("GET", "/v1.0/devices/$deviceId/status") as? JSONArray)
+    }
+
+    /**
+     * 클라우드 프로젝트에 연결한 스마트라이프 계정의 기기 전부. 100개씩 끊어 받는다.
+     * 새 프로젝트에서 이 API 가 막혀 있으면(권한 없음) 프로젝트 기기 목록 API 로 다시 묻는다.
+     */
+    suspend fun devices(): List<TuyaDevice> = withContext(Dispatchers.IO) {
+        val out = mutableListOf<TuyaDevice>()
+        try {
+            var lastRowKey = ""
+            do {
+                val r = request(
+                    "GET",
+                    "/v1.0/iot-01/associated-users/devices?size=100" +
+                        (if (lastRowKey.isNotEmpty()) "&last_row_key=$lastRowKey" else ""),
+                ) as? JSONObject ?: break
+                val arr = r.optJSONArray("devices") ?: break
+                for (i in 0 until arr.length()) arr.optJSONObject(i)?.let { out += device(it) }
+                lastRowKey = r.optString("last_row_key")
+            } while (r.optBoolean("has_more") && lastRowKey.isNotEmpty())
+        } catch (e: TuyaException) {
+            if (out.isNotEmpty()) return@withContext out   // 중간 쪽에서 끊겼으면 받은 데까지
+            val arr = request("GET", "/v2.0/cloud/thing/device?page_size=20") as? JSONArray ?: throw e
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                val id = o.optString("id")
+                // 이 목록에는 상태가 없다 — 한 대씩 따로 읽는다.
+                val sw = runCatching { switches(id) }.getOrDefault(emptyList())
+                out += TuyaDevice(id, o.optString("customName").ifEmpty { o.optString("name") },
+                    o.optString("category"), o.optBoolean("isOnline", true), sw)
+            }
+        }
+        out.sortedWith(compareByDescending<TuyaDevice> { it.switches.isNotEmpty() }.thenBy { it.name })
+    }
+
+    private fun device(o: JSONObject) = TuyaDevice(
+        id = o.optString("id"),
+        name = o.optString("name"),
+        category = o.optString("category"),
+        online = o.optBoolean("online", true),
+        switches = switchesOf(o.optJSONArray("status")),
+    )
+
+    /** 상태 목록에서 켜고 끌 수 있는 것만(switch, switch_1.., switch_led 처럼 참/거짓 값). */
+    private fun switchesOf(status: JSONArray?): List<TuyaSwitch> {
+        if (status == null) return emptyList()
+        return (0 until status.length()).mapNotNull { i ->
+            val o = status.optJSONObject(i) ?: return@mapNotNull null
+            val code = o.optString("code")
+            val v = o.opt("value")
+            if (code.startsWith("switch") && v is Boolean) TuyaSwitch(code, v) else null
+        }.sortedBy { it.code }
     }
 
     private fun scaled(v: Double, scale: Int?, guessScale: Int): Double =

@@ -22,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import com.choflix.clock.data.Settings
 import com.choflix.clock.service.BatteryPlugMonitorService
 import com.choflix.clock.ui.ClockScreen
+import com.choflix.clock.ui.DevicesScreen
 import com.choflix.clock.ui.SettingsScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -47,6 +48,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     /** 새벽(00~06시)이면 엠버 톤·밝기 상한. */
     private var night by mutableStateOf(isNight())
     private var showSettings by mutableStateOf(false)
+    private var showDevices by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,11 +77,15 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
         }
 
         setContent {
-            BackHandler(enabled = showSettings) { showSettings = false }
-            if (showSettings) {
-                SettingsScreen(settings, onClose = { showSettings = false; hideSystemBars() })
-            } else {
-                ClockScreen(settings, night = night, onOpenSettings = { showSettings = true })
+            BackHandler(enabled = showSettings || showDevices) { showSettings = false; showDevices = false }
+            when {
+                showSettings -> SettingsScreen(settings, onClose = { showSettings = false; hideSystemBars() })
+                showDevices -> DevicesScreen(settings, onClose = { showDevices = false })
+                else -> ClockScreen(
+                    settings, night = night,
+                    onOpenDevices = { showDevices = true },
+                    onOpenSettings = { showSettings = true },
+                )
             }
         }
     }

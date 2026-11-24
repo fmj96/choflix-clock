@@ -25,6 +25,8 @@ object HomeState {
     val battery = MutableStateFlow(BatteryInfo())
     /** 마지막 Tuya 오류(설정 화면에 보여준다). 성공하면 지운다. */
     val tuyaError = MutableStateFlow<String?>(null)
+    /** 기기 화면의 Tuya 기기 목록. 다시 열 때 바로 보이게 남겨 둔다. */
+    val devices = MutableStateFlow<List<TuyaDevice>>(emptyList())
     /** 설정이 바뀌어 날씨·센서를 바로 다시 불러야 할 때 1씩 늘린다. */
     val refresh = MutableStateFlow(0)
 }

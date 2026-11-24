@@ -79,7 +79,7 @@ private val AmberDim = Color(0xFF9A5A22)
  *  오른쪽: 오전/오후 · 큰 시각 · 요일 · 배터리 / 와이파이 · 날짜 | INDOOR 기온 습도
  */
 @Composable
-fun ClockScreen(settings: Settings, night: Boolean, onOpenSettings: () -> Unit) {
+fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, onOpenSettings: () -> Unit) {
     var now by remember { mutableStateOf(LocalDateTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -116,7 +116,7 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenSettings: () -> Unit) 
                 if (night) Brush.linearGradient(listOf(Color.Black, Color.Black))
                 else Brush.linearGradient(listOf(Color(0xFF0E1A2E), Color(0xFF02040A)))
             )
-            .pointerInput(Unit) { detectTapGestures(onLongPress = { onOpenSettings() }) },
+            .pointerInput(Unit) { detectTapGestures(onTap = { onOpenDevices() }, onLongPress = { onOpenSettings() }) },
     ) {
         val d = LocalDensity.current
         val h = maxHeight - 40.dp
