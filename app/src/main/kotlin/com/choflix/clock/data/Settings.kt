@@ -1,0 +1,77 @@
+package com.choflix.clock.data
+
+import android.content.Context
+import android.content.SharedPreferences
+
+/**
+ * 앱 설정. 기기 안(SharedPreferences)에만 둔다 — Tuya 키처럼 남에게 보이면 안 되는 값도
+ * 여기 들어가므로 저장소나 서버로 내보내지 않는다.
+ */
+class Settings(context: Context) {
+    private val p: SharedPreferences =
+        context.applicationContext.getSharedPreferences("clock", Context.MODE_PRIVATE)
+
+    // ── 시계 ──
+    var use24h: Boolean
+        get() = p.getBoolean("use24h", false)
+        set(v) = p.edit().putBoolean("use24h", v).apply()
+
+    // ── 날씨 위치. 비어 있으면 IP 로 대략 찾는다. ──
+    var place: String
+        get() = p.getString("place", "") ?: ""
+        set(v) = p.edit().putString("place", v).apply()
+    var lat: Double?
+        get() = p.getString("lat", null)?.toDoubleOrNull()
+        set(v) = p.edit().putString("lat", v?.toString()).apply()
+    var lon: Double?
+        get() = p.getString("lon", null)?.toDoubleOrNull()
+        set(v) = p.edit().putString("lon", v?.toString()).apply()
+
+    // ── Tuya Cloud ──
+    var tuyaRegion: String
+        get() = p.getString("tuyaRegion", TuyaRegion.entries.first().name) ?: TuyaRegion.entries.first().name
+        set(v) = p.edit().putString("tuyaRegion", v).apply()
+    var tuyaAccessId: String
+        get() = p.getString("tuyaAccessId", "") ?: ""
+        set(v) = p.edit().putString("tuyaAccessId", v.trim()).apply()
+    var tuyaSecret: String
+        get() = p.getString("tuyaSecret", "") ?: ""
+        set(v) = p.edit().putString("tuyaSecret", v.trim()).apply()
+    var sensorDeviceId: String
+        get() = p.getString("sensorDeviceId", "") ?: ""
+        set(v) = p.edit().putString("sensorDeviceId", v.trim()).apply()
+    var plugDeviceId: String
+        get() = p.getString("plugDeviceId", "") ?: ""
+        set(v) = p.edit().putString("plugDeviceId", v.trim()).apply()
+    /** 플러그 전원 명령 코드. 대부분 switch_1, 일부 제품은 switch. */
+    var plugSwitchCode: String
+        get() = p.getString("plugSwitchCode", "switch_1") ?: "switch_1"
+        set(v) = p.edit().putString("plugSwitchCode", v.trim().ifEmpty { "switch_1" }).apply()
+
+    // ── 배터리 구간 제어 ──
+    var chargeControl: Boolean
+        get() = p.getBoolean("chargeControl", false)
+        set(v) = p.edit().putBoolean("chargeControl", v).apply()
+    var lowPercent: Int
+        get() = p.getInt("lowPercent", 40)
+        set(v) = p.edit().putInt("lowPercent", v).apply()
+    var highPercent: Int
+        get() = p.getInt("highPercent", 50)
+        set(v) = p.edit().putInt("highPercent", v).apply()
+    var maxTempC: Int
+        get() = p.getInt("maxTempC", 38)
+        set(v) = p.edit().putInt("maxTempC", v).apply()
+
+    val tuyaConfigured: Boolean
+        get() = tuyaAccessId.isNotEmpty() && tuyaSecret.isNotEmpty()
+}
+
+/** Tuya 개발자 플랫폼 데이터센터. 프로젝트를 만들 때 고른 곳과 같아야 한다. */
+enum class TuyaRegion(val label: String, val host: String) {
+    WesternAmerica("미국 서부", "https://openapi.tuyaus.com"),
+    EasternAmerica("미국 동부", "https://openapi-ueaz.tuyaus.com"),
+    CentralEurope("중부 유럽", "https://openapi.tuyaeu.com"),
+    WesternEurope("서부 유럽", "https://openapi-weaz.tuyaeu.com"),
+    China("중국", "https://openapi.tuyacn.com"),
+    India("인도", "https://openapi.tuyain.com"),
+}

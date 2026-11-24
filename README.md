@@ -1,0 +1,53 @@
+# Choflix Clock
+
+서랍 속 안드로이드 공기계를 **24시간 켜 두는 LED 스타일 탁상시계**로 바꾸는 앱입니다.
+
+- 큰 세그먼트 시계, 요일·날짜, 오늘 날씨(최저/최고)
+- 실내 온·습도 — Tuya(스마트라이프) 온습도 센서
+- **배터리 부풀음 방지** — Tuya 스마트 플러그로 배터리를 40~50% 사이에서만 충전, 38°C 이상이면 충전 차단
+- 조도 센서로 밝기 자동 조절, 새벽(0~6시)에는 밝기 15% 상한 + 눈부심 적은 엠버색
+- OLED 번인 방지 — 1분마다 화면 전체를 16dp 안에서 조금씩 이동
+- 서버 없이 폰 혼자 동작 (Tuya Cloud API 를 앱에서 바로 호출)
+
+## 설치
+
+[Releases](https://github.com/fmj96/choflix-clock/releases) 에서 `ChoflixClock-vX.Y.Z.apk` 를 받아 설치합니다. 안드로이드 8.0 이상.
+
+## 사용
+
+- 시계 화면을 **길게 누르면** 설정이 열립니다.
+- **날씨 위치**: 지역 이름으로 검색해 고르거나, '자동'으로 두면 인터넷 주소로 대략 찾습니다.
+  날씨는 [Open-Meteo](https://open-meteo.com) (응답이 없으면 [MET Norway](https://api.met.no)) 를 씁니다. 키가 필요 없습니다.
+
+### Tuya 연결 (선택)
+
+1. [Tuya 개발자 플랫폼](https://platform.tuya.com) 에서 Cloud 프로젝트를 만들고 스마트라이프 앱 계정을 연결합니다.
+2. 프로젝트의 **Access ID / Access Secret**, 데이터센터, 온습도 센서와 플러그의 **Device ID** 를 설정에 넣습니다.
+3. '센서 시험', '플러그 켜기/끄기' 로 확인한 뒤 '구간 충전 켜기'를 켭니다.
+
+키는 폰 안에만 저장되고 Tuya 외의 곳으로 보내지 않습니다.
+
+### 구간 충전 동작
+
+| 배터리 | 플러그 |
+| :-- | :-- |
+| 50% 이상 | OFF |
+| 40% 이하 | ON |
+| 41~49% | 이전 상태 유지 |
+| 온도 38°C 이상 | OFF (잔량 무관) |
+
+명령을 보낸 뒤에도 실제 충전 상태가 따라오지 않으면 2분마다 다시 보내고, 5분 넘게 어긋나면
+시계의 배터리 표시가 빨갛게 바뀝니다. 숫자는 설정에서 바꿀 수 있습니다.
+
+## 빌드
+
+```sh
+source env.sh            # JDK 17, Android SDK 위치
+./gradlew assembleRelease
+```
+
+릴리스 서명 키는 `local.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`) 에서 읽습니다.
+
+## 라이선스
+
+MIT. 세그먼트 숫자 글꼴은 [DSEG](https://github.com/keshikan/DSEG) (SIL OFL 1.1).
