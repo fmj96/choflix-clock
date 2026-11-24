@@ -2,7 +2,7 @@
 
 서랍 속 안드로이드 공기계를 **24시간 켜 두는 LED 스타일 탁상시계**로 바꾸는 앱입니다.
 
-- 큰 세그먼트 시계, 요일·날짜, 날씨와 지금 바깥 기온
+- 큰 시계, 요일·날짜, 날씨와 지금 바깥 기온
 - 실내 온·습도 — Tuya(스마트라이프) 온습도 센서
 - Tuya 기기 켜기/끄기 화면
 - **배터리 부풀음 방지** — Tuya 스마트 플러그로 배터리를 40~50% 사이에서만 충전, 38°C 이상이면 충전 차단
@@ -66,4 +66,4 @@ source env.sh            # JDK 17, Android SDK 위치
 
 ## 라이선스
 
-MIT. 세그먼트 숫자 글꼴은 [DSEG](https://github.com/keshikan/DSEG) (SIL OFL 1.1).
+MIT. 숫자 글꼴은 [Barlow](https://github.com/jpt/barlow) (SIL OFL 1.1).

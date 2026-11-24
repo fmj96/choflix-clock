@@ -52,6 +52,7 @@ import com.choflix.clock.data.Place
 import com.choflix.clock.data.Settings
 import com.choflix.clock.data.TuyaCloudClient
 import com.choflix.clock.data.TuyaRegion
+import com.choflix.clock.data.Updater
 import com.choflix.clock.data.WeatherRepository
 import kotlinx.coroutines.launch
 
@@ -188,6 +189,9 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 }
             }
 
+            Section("업데이트")
+            UpdateSection()
+
             Section("계속 켜 두기 (샤오미·삼성 등)")
             Text(
                 "폰이 절전을 위해 이 앱을 몰래 끄면 충전 제어가 멈춥니다. 아래 두 가지를 해 두세요.\n" +
@@ -281,5 +285,65 @@ private fun RegionPicker(current: String, onPick: (String) -> Unit) {
                 DropdownMenuItem(text = { Text(r.label) }, onClick = { onPick(r.name); open = false })
             }
         }
+    }
+}
+
+/** 깃허브 릴리스에서 새 버전 확인 → 받기 → 설치 화면. */
+@Composable
+private fun UpdateSection() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val available by Updater.available.collectAsState()
+    var status by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        status = "확인 중…"
+        status = runCatching { Updater.check() }.fold(
+            { if (it == null) "최신 버전입니다 (v${BuildConfig.VERSION_NAME})" else "" },
+            { "확인 실패: ${it.message}" },
+        )
+    }
+
+    available?.let { r ->
+        Text(
+            "새 버전 v${r.version} — ${r.title}",
+            color = Color(0xFF9CC9FF), fontWeight = FontWeight.Bold,
+        )
+        if (r.notes.isNotBlank()) {
+            Text(r.notes.take(600), color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        val r = available
+        if (r != null) {
+            Button(enabled = !busy, onClick = {
+                if (!Updater.canInstall(context)) {
+                    status = "이 앱의 '출처를 알 수 없는 앱 설치'를 허용한 뒤 다시 눌러 주세요"
+                    Updater.openInstallPermission(context)
+                    return@Button
+                }
+                busy = true
+                scope.launch {
+                    runCatching {
+                        Updater.download(context, r) { p ->
+                            status = if (p < 0) "받는 중…" else "받는 중… ${(p * 100).toInt()}%"
+                        }
+                    }.onSuccess { status = "설치 화면을 엽니다"; Updater.install(context, it) }
+                        .onFailure { status = "받기 실패: ${it.message}" }
+                    busy = false
+                }
+            }) { Text("v${r.version} 설치") }
+        }
+        OutlinedButton(enabled = !busy, onClick = {
+            status = "확인 중…"
+            scope.launch {
+                status = runCatching { Updater.check() }.fold(
+                    { if (it == null) "최신 버전입니다 (v${BuildConfig.VERSION_NAME})" else "" },
+                    { "확인 실패: ${it.message}" },
+                )
+            }
+        }) { Text("다시 확인") }
+        if (status.isNotEmpty()) Text(status, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
     }
 }

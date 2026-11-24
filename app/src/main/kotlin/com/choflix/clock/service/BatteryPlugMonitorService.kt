@@ -20,6 +20,7 @@ import com.choflix.clock.data.BatteryInfo
 import com.choflix.clock.data.HomeState
 import com.choflix.clock.data.Settings
 import com.choflix.clock.data.TuyaCloudClient
+import com.choflix.clock.data.Updater
 import com.choflix.clock.data.WeatherRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +78,8 @@ class BatteryPlugMonitorService : Service() {
         // 센서만으로 한 달 2만 번이 넘어 한도에 닿을 수 있다. 실내 기온은 그렇게 빨리 변하지 않는다.
         scope.launch { loop(5 * 60_000L) { pollIndoor() } }
         scope.launch { loop(30 * 60_000L) { pollWeather() } }
+        // 새 버전 확인은 6시간마다 — 있으면 시계의 톱니바퀴에 빨간 점이 뜬다.
+        scope.launch { while (true) { runCatching { Updater.check() }; delay(6 * 3600_000L) } }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY

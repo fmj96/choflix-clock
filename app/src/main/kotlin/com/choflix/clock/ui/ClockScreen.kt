@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -53,6 +54,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -62,14 +65,32 @@ import androidx.compose.ui.unit.dp
 import com.choflix.clock.R
 import com.choflix.clock.data.HomeState
 import com.choflix.clock.data.Settings
+import com.choflix.clock.data.Updater
+import androidx.compose.foundation.shape.CircleShape
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 import java.time.format.TextStyle as DateTextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** 세그먼트 숫자(DSEG7 Modern). '!' 는 숫자 한 칸 너비의 빈칸이다. */
-val Segment = FontFamily(Font(R.font.dseg7_modern_bold))
+/**
+ * 숫자 글꼴(Barlow SemiBold). 전자시계(7세그먼트) 글꼴은 멀리서 읽기 어렵다는 의견으로 바꿨다.
+ * 고정폭 숫자(tnum)를 켜서 초가 바뀌어도 자리가 흔들리지 않게 한다.
+ */
+private val Digits = FontFamily(Font(R.font.barlow_semibold))
+
+/** 숫자 글자 높이에 맞춰 줄 높이를 1em 으로 줄인다 — 위아래 빈 여백 없이 칸을 채우게. */
+private fun digitStyle(size: TextUnit, color: Color) = TextStyle(
+    fontFamily = Digits, fontSize = size, color = color, fontFeatureSettings = "tnum",
+    lineHeight = size,
+    platformStyle = PlatformTextStyle(includeFontPadding = false),
+    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+)
+
+/** 숫자 글꼴로 쓴 글자열의 폭(em). 고정폭 숫자 0.58, 점 0.27, 빼기 0.40, 콜론 0.36. */
+private fun em(s: String): Float = s.sumOf {
+    when (it) { '.' -> 0.27; '-' -> 0.40; ':' -> 0.36; else -> 0.58 }.toDouble()
+}.toFloat()
 
 private val Red = Color(0xFFE5414B)
 private val Blue = Color(0xFF3D8BFF)
@@ -95,6 +116,7 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
     val indoor by HomeState.indoor.collectAsState()
     val battery by HomeState.battery.collectAsState()
     val online = rememberOnline()
+    val update by Updater.available.collectAsState()
 
     // 새벽에는 흰색 대신 눈부심 적은 엠버, 빨강도 어둡게.
     val main = if (night) Amber else Color.White
@@ -127,33 +149,62 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
         Row(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 28.dp, vertical = 20.dp)
+                .padding(horizontal = 24.dp, vertical = 20.dp)
                 .offset(dx, dy),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // ── 왼쪽: 오늘 날씨 ──
-            BoxWithConstraints(Modifier.weight(0.3f).fillMaxHeight()) {
-                // 지금 바깥 기온 하나만(최저/최고는 사용자 요청으로 뺐다).
-                val outside = weather?.currentC?.roundToInt()?.toString() ?: "--"
-                // 폭에 맞춘다: 숫자(0.816em씩) + °C(약 0.5em). 영하 두 자리도 들어가게.
+            // ── 왼쪽: 날짜·요일 / 날씨 그림 / 바깥 기온 / 실내 기온·습도 ──
+            BoxWithConstraints(Modifier.weight(0.34f).fillMaxHeight()) {
                 val leftW = maxWidth
-                val tempSize = minOf(h * 0.22f, leftW / (outside.length * 0.816f + 0.6f))
+                val outside = weather?.currentC?.roundToInt()?.toString() ?: "--"
+                // 모두 칸 폭에 맞춘다(글자 폭은 [em]).
+                val outSize = minOf(h * 0.24f, leftW / (em(outside) + 0.5f))
+                val inTemp = indoor?.temperatureC?.let { "%.1f".format(Locale.US, it) } ?: "--.-"
+                val inHum = indoor?.humidity?.let { it.toString() } ?: "--"
+                // 실내 줄: 숫자 5칸(기온 3 + 습도 2) + 단위·간격 약 1.4em + INDOOR 세로 글씨 몫.
+                // 실내 줄: 기온·습도 숫자 + 단위·간격 약 1.2em + INDOOR 세로 글씨 몫.
+                val inSize = minOf(h * 0.14f, (leftW - h * 0.06f - 8.dp) / (em(inTemp) + em(inHum) + 1.2f))
+                val date = "%d.%02d".format(now.monthValue, now.dayOfMonth)
+                val dateSize = minOf(h * 0.10f, leftW / (em(date) + 2.2f))
                 Column(
                     Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("TODAY", color = main, fontSize = (h * 0.06f).sp(), fontWeight = FontWeight.Bold)
-                    Box(Modifier.size(minOf(h * 0.42f, leftW * 0.8f)), contentAlignment = Alignment.Center) {
-                        weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main, night) }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            date,
+                            style = digitStyle(dateSize.sp(), main),
+                            maxLines = 1,
+                        )
+                        Spacer(Modifier.width(dateSize * 0.4f))
+                        Text(
+                            now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.US).uppercase(),
+                            color = main, fontSize = (dateSize * 0.8f).sp(), fontWeight = FontWeight.Bold, maxLines = 1,
+                        )
                     }
-                    Temp(outside, warm, tempSize, d)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(minOf(h * 0.30f, leftW * 0.45f)), contentAlignment = Alignment.Center) {
+                            weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main, night) }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Reading(outside, "°C", warm, minOf(outSize, (leftW - minOf(h * 0.30f, leftW * 0.45f) - 8.dp) / (em(outside) + 0.5f)), d)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "INDOOR", color = accent, fontSize = (h * 0.035f).sp(), fontWeight = FontWeight.Bold,
+                            maxLines = 1, modifier = Modifier.vertical().padding(end = 6.dp),
+                        )
+                        Reading(inTemp, "°C", main, inSize, d)
+                        Spacer(Modifier.width(inSize * 0.3f))
+                        Reading(inHum, "%", main, inSize, d)
+                    }
                 }
             }
 
             // 가운데 무지개 세로줄.
             Box(
-                Modifier.padding(horizontal = 20.dp).width(2.dp).fillMaxHeight(0.92f).background(
+                Modifier.padding(horizontal = 16.dp).width(2.dp).fillMaxHeight(0.92f).background(
                     if (night) Brush.verticalGradient(listOf(AmberDim, AmberDim))
                     else Brush.verticalGradient(
                         listOf(Color(0xFFFF5A5A), Color(0xFFFFC83D), Color(0xFF4CD964), Color(0xFF3D8BFF), Color(0xFFB06CFF))
@@ -161,70 +212,39 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                 )
             )
 
-            // ── 오른쪽: 시각 ──
-            BoxWithConstraints(Modifier.weight(0.7f).fillMaxHeight()) {
-                val w = maxWidth
-                // 큰 시각 "10:30" 은 숫자 넷(0.816em씩)과 콜론(0.2em) = 3.46em. 옆의 AM/PM·요일 칸을
-                // 빼고 남는 폭에 맞춘다 — 폰 가로 화면은 생각보다 좁다(Redmi Note 10 Pro 약 870dp).
-                val side = if (settings.use24h) h * 0.17f + 12.dp else h * 0.30f + 22.dp
-                val bigSize = minOf(h * 0.40f, (w - side) / 3.5f)
-                // 아래 줄 숫자는 날짜 4 + 실내 기온 3 + 습도 2 = 9칸(점은 폭이 없다). 아이콘·줄·단위 몫을 빼고 맞춘다.
-                val smallSize = minOf(h * 0.15f, (w - h * 0.2f - 150.dp) / 7.4f)
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.fillMaxHeight().padding(top = h * 0.12f), contentAlignment = Alignment.TopStart) {
-                            if (!settings.use24h) {
-                                Text(
-                                    if (now.hour < 12) "AM" else "PM", color = main,
-                                    fontSize = (h * 0.07f).sp(), fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
-                        // 12시간제의 한 자리 시는 앞자리를 비운다('!' = 빈 숫자 칸) — 자리가 흔들리지 않게.
-                        val hh = if (settings.use24h) "%02d".format(hour) else hour.toString().padStart(2, '!')
-                        val big = TextStyle(fontFamily = Segment, fontSize = bigSize.sp(), color = main)
+            // ── 오른쪽: 시각만 크게. AM/PM 은 위, 와이파이·배터리는 아래에 작게 ──
+            Column(Modifier.weight(0.66f).fillMaxHeight()) {
+                Box(Modifier.fillMaxWidth().height(h * 0.12f), contentAlignment = Alignment.CenterStart) {
+                    if (!settings.use24h) {
+                        Text(
+                            if (now.hour < 12) "AM" else "PM", color = main,
+                            fontSize = (h * 0.07f).sp(), fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+                BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    // "10:30" = 숫자 넷(0.58em씩) + 콜론(0.36em) = 2.68em. 폭과 높이 중 먼저 닿는 쪽에 맞춘다.
+                    val bigSize = minOf(maxHeight * 1.0f, maxWidth / 2.76f)
+                    val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
+                    val hh = if (settings.use24h) "%02d".format(hour) else hour.toString()
+                    val big = digitStyle(bigSize.sp(), main)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(hh, style = big, maxLines = 1, softWrap = false)
                         Text(":", style = big, modifier = Modifier.alpha(blink), maxLines = 1, softWrap = false)
                         Text("%02d".format(now.minute), style = big, maxLines = 1, softWrap = false)
-                        Spacer(Modifier.width(12.dp))
-                        // 위쪽은 모서리 아이콘(전구·톱니바퀴) 자리라 요일을 그 아래로 내린다.
-                        Column(
-                            Modifier.fillMaxHeight().padding(top = maxOf(h * 0.1f, 56.dp), bottom = h * 0.1f),
-                            verticalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text(
-                                now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.US).uppercase(),
-                                color = main, fontSize = (h * 0.07f).sp(), fontWeight = FontWeight.Bold,
-                            )
-                            BatteryBadge(battery, main, warm, h * 0.06f, d)
-                        }
                     }
-
-                    Row(
-                        Modifier.height(h * 0.24f),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
-                            tint = if (online) accent else warm, modifier = Modifier.size(h * 0.08f),
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        val small = TextStyle(fontFamily = Segment, fontSize = smallSize.sp(), color = main)
-                        Text("%2d.%02d".format(now.monthValue, now.dayOfMonth).replace(' ', '!'), style = small, maxLines = 1)
-                        Box(Modifier.padding(horizontal = 14.dp).width(1.dp).fillMaxHeight(0.8f).background(accent))
-                        Text(
-                            "INDOOR", color = accent, fontSize = (h * 0.035f).sp(), fontWeight = FontWeight.Bold,
-                            maxLines = 1, modifier = Modifier.vertical().padding(end = 6.dp),
-                        )
-                        val t = indoor?.temperatureC
-                        Text(t?.let { "%.1f".format(Locale.US, it) } ?: "--.-", style = small, maxLines = 1)
-                        UnitLabel("°C", main, h, d)
-                        Spacer(Modifier.width(14.dp))
-                        Text(indoor?.humidity?.let { "%2d".format(it).replace(' ', '!') } ?: "--", style = small, maxLines = 1)
-                        UnitLabel("%", main, h, d)
-                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth().height(h * 0.12f),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
+                        tint = if (online) accent else warm, modifier = Modifier.size(h * 0.06f),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    BatteryBadge(battery, main, warm, h * 0.06f, d)
                 }
             }
         }
@@ -236,29 +256,28 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                 Icon(Icons.Outlined.Lightbulb, "기기", tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp))
             }
             IconButton(onClick = onOpenSettings, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Outlined.Settings, "설정", tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp))
+                Box {
+                    Icon(Icons.Outlined.Settings, "설정", tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp))
+                    // 새 버전이 있으면 빨간 점.
+                    if (update != null) {
+                        Box(Modifier.align(Alignment.TopEnd).size(8.dp).background(warm, CircleShape))
+                    }
+                }
             }
         }
     }
 }
 
+/** 숫자 + 작은 단위(°C, %). */
 @Composable
-private fun Temp(c: String, color: Color, size: Dp, d: androidx.compose.ui.unit.Density) {
+private fun Reading(value: String, unit: String, color: Color, size: Dp, d: androidx.compose.ui.unit.Density) {
     Row(verticalAlignment = Alignment.Top) {
         Text(
-            c, maxLines = 1, softWrap = false,
-            style = TextStyle(fontFamily = Segment, fontSize = with(d) { size.toSp() }, color = color),
+            value, maxLines = 1, softWrap = false,
+            style = digitStyle(with(d) { size.toSp() }, color),
         )
-        Text("°C", color = color, fontSize = with(d) { (size * 0.3f).toSp() }, fontWeight = FontWeight.Bold)
+        Text(unit, color = color, fontSize = with(d) { (size * 0.32f).toSp() }, fontWeight = FontWeight.Bold)
     }
-}
-
-@Composable
-private fun UnitLabel(u: String, color: Color, h: Dp, d: androidx.compose.ui.unit.Density) {
-    Text(
-        u, color = color, fontSize = with(d) { (h * 0.06f).toSp() }, fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 4.dp, bottom = h * 0.06f),
-    )
 }
 
 /** 사진의 알람 종 자리에 배터리. 충전 제어가 어긋나거나 과열이면 빨갛게. */
