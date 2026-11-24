@@ -66,4 +66,4 @@ source env.sh            # JDK 17, Android SDK 위치
 
 ## 라이선스
 
-MIT. 숫자 글꼴은 [Barlow](https://github.com/jpt/barlow) (SIL OFL 1.1).
+MIT. 숫자 글꼴은 [Barlow Condensed](https://github.com/jpt/barlow) (SIL OFL 1.1).

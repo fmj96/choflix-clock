@@ -74,10 +74,11 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * 숫자 글꼴(Barlow SemiBold). 전자시계(7세그먼트) 글꼴은 멀리서 읽기 어렵다는 의견으로 바꿨다.
- * 고정폭 숫자(tnum)를 켜서 초가 바뀌어도 자리가 흔들리지 않게 한다.
+ * 숫자 글꼴(Barlow Condensed SemiBold). 전자시계(7세그먼트) 글꼴은 멀리서 읽기 어렵다는 의견으로 바꿨고,
+ * 폭이 좁은 판을 골라 같은 화면 폭에 시각을 더 크게 넣는다(일반 Barlow 보다 약 17% 크게).
+ * 고정폭 숫자(tnum)를 켜서 분이 바뀌어도 자리가 흔들리지 않게 한다.
  */
-private val Digits = FontFamily(Font(R.font.barlow_semibold))
+private val Digits = FontFamily(Font(R.font.barlow_condensed_semibold))
 
 /** 숫자 글자 높이에 맞춰 줄 높이를 1em 으로 줄인다 — 위아래 빈 여백 없이 칸을 채우게. */
 private fun digitStyle(size: TextUnit, color: Color) = TextStyle(
@@ -87,9 +88,9 @@ private fun digitStyle(size: TextUnit, color: Color) = TextStyle(
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
 )
 
-/** 숫자 글꼴로 쓴 글자열의 폭(em). 고정폭 숫자 0.58, 점 0.27, 빼기 0.40, 콜론 0.36. */
-private fun em(s: String): Float = s.sumOf {
-    when (it) { '.' -> 0.27; '-' -> 0.40; ':' -> 0.36; else -> 0.58 }.toDouble()
+/** 숫자 글꼴로 쓴 글자열의 폭(em, 글꼴 파일에서 잰 값에 4% 여유). 고정폭 숫자 0.475, 점 0.211, 빼기 0.325, 콜론 0.252. */
+private fun em(s: String): Float = 1.04f * s.sumOf {
+    when (it) { '.' -> 0.211; '-' -> 0.325; ':' -> 0.252; else -> 0.475 }.toDouble()
 }.toFloat()
 
 private val Red = Color(0xFFE5414B)
@@ -129,10 +130,6 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
     val dx by animateDpAsState(SHIFTS[step].first, tween(3000), label = "dx")
     val dy by animateDpAsState(SHIFTS[step].second, tween(3000), label = "dy")
 
-    // 콜론 깜빡임(1초 주기).
-    val blink by rememberInfiniteTransition(label = "colon").animateFloat(
-        1f, 0.15f, infiniteRepeatable(tween(500), RepeatMode.Reverse), label = "colonA"
-    )
 
     BoxWithConstraints(
         Modifier
@@ -143,29 +140,30 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
             ),
     ) {
         val d = LocalDensity.current
-        val h = maxHeight - 40.dp
+        val h = maxHeight - 24.dp
         fun Dp.sp(): TextUnit = with(d) { toSp() }
 
         Row(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 20.dp)
+                .padding(horizontal = 24.dp, vertical = 12.dp)
                 .offset(dx, dy),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // ── 왼쪽: 날짜·요일 / 날씨 그림 / 바깥 기온 / 실내 기온·습도 ──
-            BoxWithConstraints(Modifier.weight(0.34f).fillMaxHeight()) {
+            BoxWithConstraints(Modifier.weight(0.36f).fillMaxHeight()) {
                 val leftW = maxWidth
                 val outside = weather?.currentC?.roundToInt()?.toString() ?: "--"
                 // 모두 칸 폭에 맞춘다(글자 폭은 [em]).
-                val outSize = minOf(h * 0.24f, leftW / (em(outside) + 0.5f))
+                val iconSize = minOf(h * 0.32f, leftW * 0.42f)
+                val outSize = minOf(h * 0.26f, (leftW - iconSize - 8.dp) / (em(outside) + 0.5f))
                 val inTemp = indoor?.temperatureC?.let { "%.1f".format(Locale.US, it) } ?: "--.-"
                 val inHum = indoor?.humidity?.let { it.toString() } ?: "--"
                 // 실내 줄: 숫자 5칸(기온 3 + 습도 2) + 단위·간격 약 1.4em + INDOOR 세로 글씨 몫.
                 // 실내 줄: 기온·습도 숫자 + 단위·간격 약 1.2em + INDOOR 세로 글씨 몫.
-                val inSize = minOf(h * 0.14f, (leftW - h * 0.06f - 8.dp) / (em(inTemp) + em(inHum) + 1.2f))
+                val inSize = minOf(h * 0.18f, (leftW - h * 0.06f - 8.dp) / (em(inTemp) + em(inHum) + 1.2f))
                 val date = "%d.%02d".format(now.monthValue, now.dayOfMonth)
-                val dateSize = minOf(h * 0.10f, leftW / (em(date) + 2.2f))
+                val dateSize = minOf(h * 0.14f, leftW / (em(date) + 2.0f))
                 Column(
                     Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -180,15 +178,15 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                         Spacer(Modifier.width(dateSize * 0.4f))
                         Text(
                             now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.US).uppercase(),
-                            color = main, fontSize = (dateSize * 0.8f).sp(), fontWeight = FontWeight.Bold, maxLines = 1,
+                            color = main, fontSize = (dateSize * 0.75f).sp(), fontWeight = FontWeight.Bold, maxLines = 1,
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(minOf(h * 0.30f, leftW * 0.45f)), contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
                             weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main, night) }
                         }
                         Spacer(Modifier.width(8.dp))
-                        Reading(outside, "°C", warm, minOf(outSize, (leftW - minOf(h * 0.30f, leftW * 0.45f) - 8.dp) / (em(outside) + 0.5f)), d)
+                        Reading(outside, "°C", warm, outSize, d)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -212,39 +210,38 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                 )
             )
 
-            // ── 오른쪽: 시각만 크게. AM/PM 은 위, 와이파이·배터리는 아래에 작게 ──
-            Column(Modifier.weight(0.66f).fillMaxHeight()) {
-                Box(Modifier.fillMaxWidth().height(h * 0.12f), contentAlignment = Alignment.CenterStart) {
+            // ── 오른쪽: 시각만 크게. 윗줄에 AM/PM(왼쪽)과 와이파이·배터리(모서리 아이콘 옆) ──
+            Column(Modifier.weight(0.64f).fillMaxHeight()) {
+                Row(
+                    // 오른쪽 끝은 모서리의 전구·톱니바퀴 자리(48dp 두 개)라 비워 둔다.
+                    Modifier.fillMaxWidth().height(h * 0.12f).padding(end = 100.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     if (!settings.use24h) {
                         Text(
                             if (now.hour < 12) "AM" else "PM", color = main,
                             fontSize = (h * 0.07f).sp(), fontWeight = FontWeight.Bold,
                         )
                     }
-                }
-                BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    // "10:30" = 숫자 넷(0.58em씩) + 콜론(0.36em) = 2.68em. 폭과 높이 중 먼저 닿는 쪽에 맞춘다.
-                    val bigSize = minOf(maxHeight * 1.0f, maxWidth / 2.76f)
-                    val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
-                    val hh = if (settings.use24h) "%02d".format(hour) else hour.toString()
-                    val big = digitStyle(bigSize.sp(), main)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(hh, style = big, maxLines = 1, softWrap = false)
-                        Text(":", style = big, modifier = Modifier.alpha(blink), maxLines = 1, softWrap = false)
-                        Text("%02d".format(now.minute), style = big, maxLines = 1, softWrap = false)
-                    }
-                }
-                Row(
-                    Modifier.fillMaxWidth().height(h * 0.12f),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                    Spacer(Modifier.weight(1f))
                     Icon(
                         if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
                         tint = if (online) accent else warm, modifier = Modifier.size(h * 0.06f),
                     )
                     Spacer(Modifier.width(12.dp))
                     BatteryBadge(battery, main, warm, h * 0.06f, d)
+                }
+                BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    // "10:30" = 숫자 넷 + 콜론. 폭과 높이 중 먼저 닿는 쪽에 맞춘다.
+                    val bigSize = minOf(maxHeight * 1.0f, maxWidth / em("88:88"))
+                    val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
+                    val hh = if (settings.use24h) "%02d".format(hour) else hour.toString()
+                    val big = digitStyle(bigSize.sp(), main)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(hh, style = big, maxLines = 1, softWrap = false)
+                        Text(":", style = big, maxLines = 1, softWrap = false)   // 깜빡이지 않는다(사용자 요청)
+                        Text("%02d".format(now.minute), style = big, maxLines = 1, softWrap = false)
+                    }
                 }
             }
         }
