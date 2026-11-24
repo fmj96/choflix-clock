@@ -41,10 +41,13 @@ class Settings(context: Context) {
     var dimMaxPercent: Int
         get() = p.getInt("dimMaxPercent", 15)
         set(v) = p.edit().putInt("dimMaxPercent", v).apply()
-    /** 그 시간대에 글자를 눈부심 적은 엠버색으로. */
+    /**
+     * 그 시간대에 글자를 눈부심 적은 엠버색으로. 기본은 끔 — 켜 두면 그 시간대에는 고른 색 대신
+     * 엠버가 보여 '색을 바꿔도 안 바뀐다'로 보였다(v0.5.0 실사용).
+     */
     var dimAmber: Boolean
-        get() = p.getBoolean("dimAmber", true)
-        set(v) = p.edit().putBoolean("dimAmber", v).apply()
+        get() = p.getBoolean("dimAmber2", false)
+        set(v) = p.edit().putBoolean("dimAmber2", v).apply()
 
     fun isDimHour(hour: Int): Boolean {
         if (!dimEnabled || dimStart == dimEnd) return false

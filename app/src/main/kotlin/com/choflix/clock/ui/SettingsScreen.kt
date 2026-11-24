@@ -366,6 +366,12 @@ private fun UpdateSection() {
 @Composable
 private fun ColorPicker(settings: Settings) {
     var current by remember { mutableStateOf(settings.color) }
+    if (settings.dimAmber && settings.isDimHour(java.time.LocalTime.now().hour)) {
+        Text(
+            "지금은 자동 밝기 시간대라 시계가 엠버색으로 보입니다. 고른 색을 바로 보려면 아래 '엠버색' 항목을 끄세요.",
+            color = Color(0xFFFFB054), fontSize = 13.sp,
+        )
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
         ColorPresets.forEach { (name, argb) ->
             val selected = current == argb

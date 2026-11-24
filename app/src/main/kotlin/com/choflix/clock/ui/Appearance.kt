@@ -18,14 +18,16 @@ enum class DigitFont(
     val label: String,
     val family: FontFamily,
     val digit: Float, val dot: Float, val minus: Float, val colon: Float,
+    /** 숫자 글자의 실제 높이(em). 세로로 늘릴 배율을 정할 때 쓴다. */
+    val digitHeight: Float = 0.70f,
 ) {
     // 폭이 좁아 같은 화면 폭에 가장 크게 들어간다.
     Condensed("Barlow Condensed (기본)", FontFamily(Font(R.font.barlow_condensed_semibold)), 0.475f, 0.211f, 0.325f, 0.252f),
     Barlow("Barlow", FontFamily(Font(R.font.barlow_semibold)), 0.538f, 0.273f, 0.404f, 0.355f),
     // 전자시계(7세그먼트). 점은 앞 숫자에 겹쳐 그려져 폭이 없다.
-    Segment("전자시계 (DSEG7)", FontFamily(Font(R.font.dseg7_modern_bold)), 0.816f, 0f, 0.816f, 0.2f),
+    Segment("전자시계 (DSEG7)", FontFamily(Font(R.font.dseg7_modern_bold)), 0.816f, 0f, 0.816f, 0.2f, 0.95f),
     // 폰 기본 글꼴(Roboto·MiSans 등) — 기기마다 달라 넉넉히 잡는다.
-    System("폰 기본 글꼴", FontFamily.Default, 0.58f, 0.27f, 0.36f, 0.3f);
+    System("폰 기본 글꼴", FontFamily.Default, 0.58f, 0.27f, 0.36f, 0.3f, 0.72f);
 
     /** 이 글꼴로 쓴 글자열의 폭(em). 4% 여유. */
     fun em(s: String): Float = 1.04f * s.sumOf {

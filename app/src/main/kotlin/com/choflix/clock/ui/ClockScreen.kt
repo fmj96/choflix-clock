@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.graphics.Brush
@@ -145,7 +146,7 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                             weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main) }
                         }
                         Spacer(Modifier.width(8.dp))
-                        Reading(outside, "°C", main, outSize, font, d)
+                        Reading(outside, "°C", main, outSize, font, d, unitScale = 0.2f)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -188,8 +189,13 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                     val bigSize = minOf(maxHeight, maxWidth / font.em("88:88"))
                     val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
                     val hh = if (settings.use24h) "%02d".format(hour) else hour.toString()
+                    // 폭이 먼저 닿아 위아래가 남는다 — 남는 높이만큼 세로로 늘린다(최대 1.7배). 사용자 요청.
+                    val stretch = (maxHeight * 0.94f / (bigSize * font.digitHeight)).coerceIn(1f, 1.7f)
                     // 콜론은 깜빡이지 않는다(사용자 요청).
-                    Text("$hh:%02d".format(now.minute), style = font.style(bigSize.sp(), main), maxLines = 1, softWrap = false)
+                    Text(
+                        "$hh:%02d".format(now.minute), style = font.style(bigSize.sp(), main), maxLines = 1, softWrap = false,
+                        modifier = Modifier.graphicsLayer { scaleY = stretch },
+                    )
                 }
             }
         }
@@ -215,13 +221,16 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
 
 /** 숫자 + 작은 단위(°C, %). */
 @Composable
-private fun Reading(value: String, unit: String, color: Color, size: Dp, font: DigitFont, d: androidx.compose.ui.unit.Density) {
+private fun Reading(
+    value: String, unit: String, color: Color, size: Dp, font: DigitFont, d: androidx.compose.ui.unit.Density,
+    unitScale: Float = 0.32f,
+) {
     Row(verticalAlignment = Alignment.Top) {
         Text(
             value, maxLines = 1, softWrap = false,
             style = font.style(with(d) { size.toSp() }, color),
         )
-        Text(unit, color = color, fontSize = with(d) { (size * 0.32f).toSp() }, fontWeight = FontWeight.Bold)
+        Text(unit, color = color, fontSize = with(d) { (size * unitScale).toSp() }, fontWeight = FontWeight.Bold)
     }
 }
 
