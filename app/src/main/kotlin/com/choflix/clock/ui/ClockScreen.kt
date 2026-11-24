@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -116,7 +118,7 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                 if (night) Brush.linearGradient(listOf(Color.Black, Color.Black))
                 else Brush.linearGradient(listOf(Color(0xFF0E1A2E), Color(0xFF02040A)))
             )
-            .pointerInput(Unit) { detectTapGestures(onTap = { onOpenDevices() }, onLongPress = { onOpenSettings() }) },
+            .pointerInput(Unit) { detectTapGestures(onLongPress = { onOpenSettings() }) },
     ) {
         val d = LocalDensity.current
         val h = maxHeight - 40.dp
@@ -216,6 +218,18 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
                     UnitLabel("%", main, h, d)
                 }
             }
+        }
+
+        // 오른쪽 위 모서리의 전구 — 기기 켜기/끄기 화면. 화면 아무 데나 스쳐도 열리지 않게
+        // 이것만 버튼으로 둔다. 번인 방지 이동도 같이 받는다.
+        IconButton(
+            onClick = onOpenDevices,
+            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).offset(dx, dy).size(48.dp),
+        ) {
+            Icon(
+                Icons.Outlined.Lightbulb, "기기",
+                tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp),
+            )
         }
     }
 }

@@ -57,7 +57,7 @@ private val OnColor = Color(0xFF3D8BFF)
 private val CardColor = Color(0xFF14223A)
 
 /**
- * Tuya 기기 바로 켜기/끄기. 시계 화면을 짧게 누르면 열린다.
+ * Tuya 기기 바로 켜기/끄기. 시계 오른쪽 위 전구를 누르면 열린다.
  * [IDLE_MS] 동안 손대지 않으면 저절로 시계로 돌아간다.
  */
 @Composable
