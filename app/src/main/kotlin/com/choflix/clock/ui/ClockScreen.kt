@@ -133,6 +133,9 @@ fun ClockScreen(
                         weather?.currentC?.roundToInt()?.toString() ?: "--", font, settings.infoWeight, main,
                         Modifier.padding(start = u * 14, end = u * 46, top = u * 60, bottom = u * 14).fillMaxSize(),
                         stretch = true,
+                        // 크기는 "-20" 기준으로 고정 — 한 자리일 때 숫자가 옆으로 퍼지지 않게. 빼기는 작게.
+                        reference = "-20",
+                        minusScale = 0.6f,
                     )
                     Text(
                         "°C", color = main, fontSize = (u * 30).sp(), fontWeight = FontWeight.SemiBold,
