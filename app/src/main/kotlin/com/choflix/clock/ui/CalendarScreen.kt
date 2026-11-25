@@ -73,7 +73,7 @@ private val EventDot = Color(0xFFFFC857)
 
 /**
  * 달력: 이번 달(앞뒤로 넘기기), 공휴일은 빨강. 날짜를 누르면 오른쪽에 그날 공휴일·일정이 나오고
- * 일정·기념일을 넣고 고칠 수 있다. 30초 동안 손대지 않으면 시계로 돌아간다(입력 창이 열려 있을 땐 멈춘다).
+ * 일정·기념일을 넣고 고칠 수 있다. 1분 동안 손대지 않으면 시계로 돌아간다(입력 창이 열려 있을 땐 멈춘다).
  */
 @Composable
 fun CalendarScreen(settings: Settings, onClose: () -> Unit) {
@@ -302,4 +302,5 @@ private val WEEK = listOf(
     DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY,
 )
 
-private const val IDLE_MS = 30_000L
+// 달력은 일정을 읽고 넣느라 오래 볼 수 있어 다른 화면(30초)보다 길게.
+private const val IDLE_MS = 60_000L
