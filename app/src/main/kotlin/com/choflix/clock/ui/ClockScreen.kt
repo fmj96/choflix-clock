@@ -71,7 +71,7 @@ import kotlin.math.roundToInt
 /**
  * 플립 시계 배치(시안 D).
  *  왼쪽: 바깥 온도(큰 카드) / 실내 온도 / 습도
- *  오른쪽 윗줄: 날짜 · 가운데 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) · 와이파이·배터리
+ *  오른쪽 윗줄: 날짜 · (오른쪽 끝) 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) · 와이파이·배터리
  *  오른쪽 아래: 시 카드(왼쪽 위 AM/PM) | 분 카드 — 숫자는 카드에 꽉 맞춰 늘린다.
  * 화면 크기는 시안(1000×450)을 기준으로 한 단위 u 로 비례해 잡는다.
  */
@@ -155,7 +155,12 @@ fun ClockScreen(
                         fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
                         modifier = Modifier.align(Alignment.CenterStart),
                     )
-                    Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(u * 10)) {
+                    // 오른쪽 끝: 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) 다음에 와이파이·배터리.
+                    Row(
+                        Modifier.align(Alignment.CenterEnd),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(u * 10),
+                    ) {
                         SquareButton(Icons.Outlined.Lightbulb, "기기", main, button, u, onOpenDevices)
                         SquareButton(Icons.Outlined.LightMode, "밝기", main, button, u) { showBrightness = true }
                         Box {
@@ -165,12 +170,7 @@ fun ClockScreen(
                                 Box(Modifier.align(Alignment.TopEnd).padding(u * 4).size(u * 10).background(WarnRed, CircleShape))
                             }
                         }
-                    }
-                    Row(
-                        Modifier.align(Alignment.CenterEnd),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(u * 14),
-                    ) {
+                        Spacer(Modifier.width(u * 8))
                         Icon(
                             if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
                             tint = if (online) main else WarnRed, modifier = Modifier.size(u * 24),
