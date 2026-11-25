@@ -1,11 +1,12 @@
 package com.choflix.clock.data
 
 import android.content.Context
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings as AndroidSettings
-import androidx.core.content.FileProvider
 import com.choflix.clock.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -124,13 +125,33 @@ object Updater {
         )
     }
 
-    /** 시스템 설치 화면을 띄운다. 같은 서명이라 설정은 그대로 남는다. */
+    /** 설치 진행·실패 메시지(설정 화면이 보여 준다). */
+    val installStatus = MutableStateFlow("")
+
+    /**
+     * 앱이 직접 설치한다(PackageInstaller 세션). APK 파일을 설치 화면에 넘기는 방식(ACTION_VIEW)은
+     * MIUI 가 자기 보안 설치기로 가로채 검사·차단한다 — 세션 방식은 확인 창 하나만 뜬다.
+     * 결과는 [InstallReceiver] 가 받는다. 같은 서명이라 설정은 그대로 남는다.
+     */
     fun install(context: Context, apk: File) {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", apk)
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, "application/vnd.android.package-archive")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-        )
+        val pi = context.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+            setAppPackageName(context.packageName)
+            setSize(apk.length())
+            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+        }
+        val id = pi.createSession(params)
+        pi.openSession(id).use { session ->
+            session.openWrite("base.apk", 0, apk.length()).use { out ->
+                apk.inputStream().use { it.copyTo(out) }
+                session.fsync(out)
+            }
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+            val callback = PendingIntent.getBroadcast(
+                context, id, Intent(context, InstallReceiver::class.java), flags,
+            )
+            session.commit(callback.intentSender)
+        }
     }
 }

@@ -314,6 +314,8 @@ private fun UpdateSection() {
     val available by Updater.available.collectAsState()
     var status by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    val installMsg by Updater.installStatus.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(installMsg) { if (installMsg.isNotEmpty()) status = installMsg }
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         status = "확인 중…"
@@ -347,7 +349,11 @@ private fun UpdateSection() {
                         Updater.download(context, r) { p ->
                             status = if (p < 0) "받는 중…" else "받는 중… ${(p * 100).toInt()}%"
                         }
-                    }.onSuccess { status = "설치 화면을 엽니다"; Updater.install(context, it) }
+                    }.onSuccess {
+                        status = "설치 준비 중…"
+                        Updater.installStatus.value = ""
+                        runCatching { Updater.install(context, it) }.onFailure { e -> status = "설치 실패: ${e.message}" }
+                    }
                         .onFailure { status = "받기 실패: ${it.message}" }
                     busy = false
                 }

@@ -40,15 +40,9 @@
                 android:value="Keeps a docked phone's battery between two levels by switching a smart plug." />
         </service>
 
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.files"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
+        <receiver
+            android:name=".data.InstallReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".service.BootReceiver"
