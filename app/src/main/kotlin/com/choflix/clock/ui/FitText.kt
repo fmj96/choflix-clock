@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.Constraints
  * wrapWidth 면 높이를 꽉 채운 크기에 필요한 만큼만 폭을 차지한다(옆에 다른 글자를 붙일 때).
  *
  * centerOnText 면 suffix 를 빼고 글자열만으로 가운데를 잡는다 — 단위는 오른쪽에 매달린다.
- * 양쪽에 단위 폭만큼 자리를 둬야 해서 그만큼 조금 작아진다.
+ * 크기는 그대로 두고, 단위가 칸을 넘칠 만큼 길 때만 왼쪽으로 밀어 넣는다.
  */
 @Composable
 fun FitText(
@@ -108,7 +108,7 @@ fun FitText(
         val textW = widthOf(text)
         val gap = if (suffix.isEmpty()) 0f else 4f
         val sufW = if (suffix.isEmpty()) 0f else paint.measureText(suffix) * suffixScale
-        val totalW = maxOf(textW, reference?.let(::widthOf) ?: 0f) + (gap + sufW) * (if (centerOnText) 2 else 1)
+        val totalW = maxOf(textW, reference?.let(::widthOf) ?: 0f) + gap + sufW
         val inkH = ref.height().toFloat()
         var sx = size.width / totalW
         var sy = size.height / inkH
@@ -118,7 +118,8 @@ fun FitText(
         val x0 = when (align) {
             Alignment.Start -> 0f
             Alignment.End -> size.width - drawnW
-            else -> if (centerOnText) (size.width - textW * sx) / 2f else (size.width - drawnW) / 2f
+            else -> if (centerOnText) ((size.width - textW * sx) / 2f).coerceIn(0f, maxOf(0f, size.width - drawnW))
+                else (size.width - drawnW) / 2f
         }
         val y0 = (size.height - drawnH) / 2f
         drawIntoCanvas { c ->

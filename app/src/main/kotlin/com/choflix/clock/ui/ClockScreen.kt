@@ -165,8 +165,8 @@ fun ClockScreen(
                     }
                     FitText(
                         weather?.currentC?.roundToInt()?.toString() ?: "--", font, settings.infoWeight, main,
-                        // 최저/최고를 위로 올려 비운 아래쪽까지 숫자가 차지한다.
-                        Modifier.padding(start = u * 14, end = u * 14, top = u * 74, bottom = u * 12).fillMaxSize(),
+                        // 숫자 크기는 예전 그대로(위아래 여백 합 118) — 최저/최고가 올라가 빈 곳 가운데쯤에 둔다.
+                        Modifier.padding(start = u * 14, end = u * 14, top = u * 84, bottom = u * 34).fillMaxSize(),
                         stretch = true,
                         // 크기는 "-20" 기준으로 고정 — 한 자리일 때 숫자가 옆으로 퍼지지 않게. 빼기는 작게.
                         reference = "-20",
