@@ -66,11 +66,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.choflix.clock.data.BatteryInfo
 import com.choflix.clock.data.HomeState
+import androidx.compose.foundation.layout.widthIn
+import com.choflix.clock.data.Holidays
+import com.choflix.clock.data.Holiday
+import com.choflix.clock.data.Events
 import com.choflix.clock.data.Settings
 import com.choflix.clock.data.Updater
 import kotlinx.coroutines.delay
@@ -111,6 +116,18 @@ fun ClockScreen(
     val battery by HomeState.battery.collectAsState()
     val online = rememberOnline()
     val update by Updater.available.collectAsState()
+
+    // 오늘의 공휴일·일정·기념일 — 날짜 상자 오른쪽에 작게.
+    val context = LocalContext.current
+    val events by Events.all.collectAsState()
+    var holidays by remember { mutableStateOf<List<Holiday>>(emptyList()) }
+    val day = now.toLocalDate()
+    LaunchedEffect(day.year) {
+        Events.load(context)
+        holidays = Holidays.of(context, day.year)
+    }
+    val todayNote = (holidays.filter { it.date == day }.map { it.name } + events.filter { it.occursOn(day) }.map { it.title })
+        .joinToString(" · ")
 
     val font = DigitFont.of(settings.font)
     val main = if (night && settings.dimAmber) NightAmber else Color(settings.color)
@@ -191,15 +208,24 @@ fun ClockScreen(
                             .clickable(onClickLabel = "달력", onClick = onOpenCalendar),
                         contentAlignment = Alignment.Center,
                     ) {
-                        // 상자에 꽉 맞춰(비율 유지) 크게 — 위아래 여백은 조금만.
-                        FitText(
-                            "%04d-%02d-%02d %s".format(
-                                now.year, now.monthValue, now.dayOfMonth,
-                                now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
-                            ),
-                            font, settings.infoWeight, main,
-                            Modifier.fillMaxSize().padding(horizontal = u * 10, vertical = u * 7),
-                        )
+                        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                            // 상자에 꽉 맞춰(비율 유지) 크게 — 위아래 여백은 조금만.
+                            FitText(
+                                "%04d-%02d-%02d %s".format(
+                                    now.year, now.monthValue, now.dayOfMonth,
+                                    now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
+                                ),
+                                font, settings.infoWeight, main,
+                                Modifier.weight(1f).fillMaxHeight().padding(horizontal = u * 10, vertical = u * 7),
+                            )
+                            // 카드 제목(날씨·미세먼지)과 같은 크기·색.
+                            if (todayNote.isNotEmpty()) {
+                                Label(
+                                    todayNote, main, (u * 15).sp(),
+                                    Modifier.widthIn(max = u * 140).padding(end = u * 10),
+                                )
+                            }
+                        }
                     }
                     // 오른쪽 반(분 카드 위): 버튼은 분 카드 왼쪽 끝에 맞추고, 와이파이·배터리는 오른쪽 끝.
                     Box(Modifier.weight(1f).fillMaxHeight()) {
@@ -250,7 +276,7 @@ fun ClockScreen(
 
 @Composable
 private fun Label(text: String, color: Color, size: TextUnit, modifier: Modifier) {
-    Text(text, color = color.copy(alpha = 0.6f), fontSize = size, maxLines = 1, modifier = modifier)
+    Text(text, color = color.copy(alpha = 0.6f), fontSize = size, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
 }
 
 /** 미세먼지 카드: 등급(좋음·보통·나쁨·매우나쁨)과 오른쪽에 표정. */
