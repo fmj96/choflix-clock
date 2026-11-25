@@ -160,7 +160,7 @@ fun ClockScreen(
                         Text(
                             "최저 $lo° / 최고 $hi°", color = main.copy(alpha = 0.7f), fontSize = (u * 17).sp(),
                             fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
-                            modifier = Modifier.align(Alignment.BottomStart).padding(start = u * 14, bottom = u * 10),
+                            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = u * 10),
                         )
                     }
                 }
@@ -243,7 +243,7 @@ private fun DustCard(
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
         Label("미세먼지", color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
         Row(
-            Modifier.fillMaxSize().padding(start = u * 12, end = u * 12, top = u * 26, bottom = u * 4),
+            Modifier.fillMaxSize().padding(start = u * 12, end = u * 8, top = u * 24, bottom = u * 4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val g = air?.grade
@@ -252,12 +252,15 @@ private fun DustCard(
                 fontFamily = font.family, fontWeight = FontWeight(font.nearest(weight)), maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
-            if (g != null) Icon(dustFace(g), null, tint = color, modifier = Modifier.size(u * 46))
+            if (g != null) Icon(dustFace(g), null, tint = DustColors[g], modifier = Modifier.size(u * 62))
         }
     }
 }
 
 private val DustNames = listOf("좋음", "보통", "나쁨", "매우나쁨")
+
+/** 표정 색은 글자 색 설정과 상관없이 고정 — 좋음 파랑, 보통 초록, 나쁨·매우나쁨 빨강. */
+private val DustColors = listOf(Color(0xFF4D8DFF), Color(0xFF5BE37D), WarnRed, WarnRed)
 
 private fun dustFace(grade: Int): ImageVector = when (grade) {
     0 -> Icons.Outlined.SentimentVerySatisfied
