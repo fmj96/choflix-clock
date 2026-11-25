@@ -171,8 +171,9 @@ fun ClockScreen(
                         // 크기는 "-20" 기준으로 고정 — 한 자리일 때 숫자가 옆으로 퍼지지 않게. 빼기는 작게.
                         reference = "-20",
                         minusScale = 0.6f,
-                        // °C 를 숫자에 붙여 둘을 한 덩어리로 카드 가운데에 둔다.
+                        // °C 는 숫자 오른쪽에 매달고, 가운데는 숫자만으로 잡는다.
                         suffix = "°C",
+                        centerOnText = true,
                     )
                     // "날씨" 바로 아래 작게 왼쪽 정렬: 오늘 최저/최고(오른쪽 날씨 그림과 겹치지 않게 폭을 비워 둔다).
                     val lo = weather?.minC?.roundToInt()
