@@ -199,9 +199,10 @@ fun ClockScreen(
                             Modifier.fillMaxSize().padding(horizontal = u * 10, vertical = u * 7),
                         )
                     }
-                    // 오른쪽 끝: 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) 다음에 와이파이·배터리.
-                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterEnd) {
+                    // 오른쪽 반(분 카드 위): 버튼은 분 카드 왼쪽 끝에 맞추고, 와이파이·배터리는 오른쪽 끝.
+                    Box(Modifier.weight(1f).fillMaxHeight()) {
                         Row(
+                            Modifier.fillMaxSize(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(u * 10),
                         ) {
@@ -214,7 +215,7 @@ fun ClockScreen(
                                     Box(Modifier.align(Alignment.TopEnd).padding(u * 4).size(u * 10).background(WarnRed, CircleShape))
                                 }
                             }
-                            Spacer(Modifier.width(u * 8))
+                            Spacer(Modifier.weight(1f))
                             Icon(
                                 if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
                                 tint = if (online) main else WarnRed, modifier = Modifier.size(u * 24),
