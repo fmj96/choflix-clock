@@ -211,12 +211,13 @@ fun ClockScreen(
                         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                             // 상자에 꽉 맞춰(비율 유지) 크게 — 위아래 여백은 조금만.
                             FitText(
-                                "%02d-%02d %s".format(
+                                "%02d/%02d %s".format(
                                     now.monthValue, now.dayOfMonth,
                                     now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
                                 ),
                                 font, settings.infoWeight, main,
                                 Modifier.weight(1f).fillMaxHeight().padding(horizontal = u * 10, vertical = u * 7),
+                                half = setOf('/'),
                             )
                             // 카드 제목(날씨·미세먼지)과 같은 크기·색.
                             if (todayNote.isNotEmpty()) {
