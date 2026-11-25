@@ -170,7 +170,7 @@ fun ClockScreen(
                     "실내 온도 / 습도",
                     "${indoor?.temperatureC?.roundToInt() ?: "--"}°C / ${indoor?.humidity ?: "--"}%", "",
                     font, settings.infoWeight, main, card, u, d, Modifier.weight(1f),
-                    small = setOf('°', 'C', '%'),
+                    small = setOf('°', 'C', '%'), half = setOf('/'),
                 )
             }
 
@@ -243,16 +243,22 @@ private fun DustCard(
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
         Label("미세먼지", color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
         Row(
-            Modifier.fillMaxSize().padding(start = u * 12, end = u * 8, top = u * 24, bottom = u * 4),
+            Modifier.fillMaxSize().padding(start = u * 12, end = u * 92, top = u * 24, bottom = u * 4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val g = air?.grade
             Text(
-                g?.let { DustNames[it] } ?: "--", color = color, fontSize = with(d) { (u * 36).toSp() },
+                g?.let { DustNames[it] } ?: "--", color = color, fontSize = with(d) { (u * if (g == 3) 28 else 36).toSp() },
                 fontFamily = font.family, fontWeight = FontWeight(font.nearest(weight)), maxLines = 1,
                 modifier = Modifier.weight(1f),
             )
-            if (g != null) Icon(dustFace(g), null, tint = DustColors[g], modifier = Modifier.size(u * 62))
+        }
+        // 표정은 카드 높이를 거의 채우게 오른쪽에 크게.
+        air?.grade?.let { g ->
+            Icon(
+                dustFace(g), null, tint = DustColors[g],
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = u * 6).size(u * 84),
+            )
         }
     }
 }
@@ -273,14 +279,15 @@ private fun dustFace(grade: Int): ImageVector = when (grade) {
 @Composable
 private fun SmallCard(
     title: String, value: String, unit: String, font: DigitFont, weight: Int, color: Color, card: Color,
-    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier, small: Set<Char> = emptySet(),
+    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
+    small: Set<Char> = emptySet(), half: Set<Char> = emptySet(),
 ) {
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
         Label(title, color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
         FitText(
             value, font, weight, color,
             Modifier.padding(start = u * 10, end = u * 10, top = u * 30, bottom = u * 10).fillMaxSize(),
-            suffix = unit, small = small,
+            suffix = unit, small = small, half = half,
         )
     }
 }
