@@ -138,12 +138,12 @@ fun ClockScreen(
             Column(Modifier.width(u * 226).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 8)) {
                 Box(Modifier.fillMaxWidth().weight(2.2f).clip(RoundedCornerShape(u * 20)).background(card)) {
                     Label("실외 온도", main, (u * 17).sp(), Modifier.padding(start = u * 12, top = u * 12))
-                    Box(Modifier.align(Alignment.TopEnd).padding(top = u * 8, end = u * 10).size(u * 44)) {
+                    Box(Modifier.align(Alignment.TopEnd).padding(top = u * 6, end = u * 8).size(u * 66)) {
                         weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main) }
                     }
                     FitText(
                         weather?.currentC?.roundToInt()?.toString() ?: "--", font, settings.infoWeight, main,
-                        Modifier.padding(start = u * 14, end = u * 46, top = u * 60, bottom = u * 40).fillMaxSize(),
+                        Modifier.padding(start = u * 14, end = u * 46, top = u * 78, bottom = u * 40).fillMaxSize(),
                         stretch = true,
                         // 크기는 "-20" 기준으로 고정 — 한 자리일 때 숫자가 옆으로 퍼지지 않게. 빼기는 작게.
                         reference = "-20",
@@ -151,7 +151,7 @@ fun ClockScreen(
                     )
                     Text(
                         "°C", color = main, fontSize = (u * 30).sp(), fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(top = u * 56, end = u * 12),
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = u * 74, end = u * 12),
                     )
                     // 맨 아래 작게: 오늘 최저/최고.
                     val lo = weather?.minC?.roundToInt()
