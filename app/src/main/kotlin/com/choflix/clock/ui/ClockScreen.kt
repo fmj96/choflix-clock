@@ -113,7 +113,6 @@ fun ClockScreen(
     val main = if (night && settings.dimAmber) NightAmber else Color(settings.color)
     // 카드는 밤에 더 어둡게 — 넓은 회색 면이 어두운 방에서 밝게 떠 보이지 않게.
     val card = if (night) Color(0xFF151515) else Color(0xFF2A2A2A)
-    val button = if (night) Color(0xFF202020) else Color(0xFF3A3A3A)
     var showBrightness by remember { mutableStateOf(false) }
 
     // 번인 방지: 1분마다 화면 전체를 반지름 16dp 원 위의 다음 자리로 옮긴다(8자리 순환).
@@ -179,7 +178,7 @@ fun ClockScreen(
                     // 날짜 상자: 폭은 시 카드와 같고 높이·모양·색은 버튼과 같게.
                     Box(
                         Modifier.weight(1f).align(Alignment.CenterVertically).height(u * 44)
-                            .clip(RoundedCornerShape(u * 12)).background(button),
+                            .clip(RoundedCornerShape(u * 12)).background(card),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -195,10 +194,10 @@ fun ClockScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(u * 10),
                         ) {
-                            SquareButton(Icons.Outlined.Lightbulb, "기기", main, button, u, onOpenDevices)
-                            SquareButton(Icons.Outlined.LightMode, "밝기", main, button, u) { showBrightness = true }
+                            SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onOpenDevices)
+                            SquareButton(Icons.Outlined.LightMode, "밝기", main, card, u) { showBrightness = true }
                             Box {
-                                SquareButton(Icons.Outlined.Settings, "설정", main, button, u, onOpenSettings)
+                                SquareButton(Icons.Outlined.Settings, "설정", main, card, u, onOpenSettings)
                                 // 새 버전이 있으면 빨간 점.
                                 if (update != null) {
                                     Box(Modifier.align(Alignment.TopEnd).padding(u * 4).size(u * 10).background(WarnRed, CircleShape))

@@ -15,8 +15,8 @@ android {
         // 서랍 속 공기계가 대상이라 낮게 잡는다. 8.0 부터 포그라운드 서비스·알림 채널이 갖춰진다.
         minSdk = 26
         targetSdk = 36
-        versionCode = 29
-        versionName = "0.7.7"
+        versionCode = 30
+        versionName = "0.7.8"
     }
 
     signingConfigs {
