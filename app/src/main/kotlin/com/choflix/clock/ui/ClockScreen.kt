@@ -165,7 +165,8 @@ fun ClockScreen(
                     }
                     FitText(
                         weather?.currentC?.roundToInt()?.toString() ?: "--", font, settings.infoWeight, main,
-                        Modifier.padding(start = u * 14, end = u * 14, top = u * 78, bottom = u * 40).fillMaxSize(),
+                        // 최저/최고를 위로 올려 비운 아래쪽까지 숫자가 차지한다.
+                        Modifier.padding(start = u * 14, end = u * 14, top = u * 74, bottom = u * 12).fillMaxSize(),
                         stretch = true,
                         // 크기는 "-20" 기준으로 고정 — 한 자리일 때 숫자가 옆으로 퍼지지 않게. 빼기는 작게.
                         reference = "-20",
@@ -173,14 +174,15 @@ fun ClockScreen(
                         // °C 를 숫자에 붙여 둘을 한 덩어리로 카드 가운데에 둔다.
                         suffix = "°C",
                     )
-                    // 맨 아래 작게: 오늘 최저/최고.
+                    // "날씨" 바로 아래 작게 왼쪽 정렬: 오늘 최저/최고(오른쪽 날씨 그림과 겹치지 않게 폭을 비워 둔다).
                     val lo = weather?.minC?.roundToInt()
                     val hi = weather?.maxC?.roundToInt()
                     if (lo != null && hi != null) {
                         Text(
-                            "최저 $lo° / 최고 $hi°", color = main.copy(alpha = 0.7f), fontSize = (u * 17).sp(),
+                            "최저 $lo° / 최고 $hi°", color = main.copy(alpha = 0.7f), fontSize = (u * 14).sp(),
                             fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
-                            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = u * 10),
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(start = u * 12, top = u * 38, end = u * 76),
                         )
                     }
                 }
