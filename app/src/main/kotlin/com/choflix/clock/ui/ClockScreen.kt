@@ -181,13 +181,14 @@ fun ClockScreen(
                             .clip(RoundedCornerShape(u * 12)).background(card),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
+                        // 상자에 꽉 맞춰(비율 유지) 크게 — 위아래 여백은 조금만.
+                        FitText(
                             "%04d-%02d-%02d %s".format(
                                 now.year, now.monthValue, now.dayOfMonth,
                                 now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
                             ),
-                            color = main, fontSize = (u * 28).sp(), fontFamily = font.family,
-                            fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
+                            font, settings.infoWeight, main,
+                            Modifier.fillMaxSize().padding(horizontal = u * 10, vertical = u * 7),
                         )
                     }
                     // 오른쪽 끝: 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) 다음에 와이파이·배터리.
