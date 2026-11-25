@@ -28,6 +28,8 @@ import kotlin.math.min
  *
  * reference 를 주면 크기를 그 글자열(예: 바깥 기온 "-20")에 맞춰 고정한다 — 글자 수가 달라져도
  * 숫자 크기가 그대로다. 빼기(-)는 [minusScale] 배로 작게 그려 폭을 아낀다.
+ *
+ * small 에 든 글자(예: °, C, %)는 글자열 가운데에 있어도 suffix 처럼 작게 윗선에 맞춘다.
  */
 @Composable
 fun FitText(
@@ -42,6 +44,7 @@ fun FitText(
     suffixScale: Float = 0.36f,
     reference: String? = null,
     minusScale: Float = 1f,
+    small: Set<Char> = emptySet(),
 ) {
     val resolver = LocalFontFamilyResolver.current
     val w = font.nearest(weight)
@@ -60,8 +63,22 @@ fun FitText(
     val ref = remember(paint) { Rect().also { paint.getTextBounds("0123456789", 0, 10, it) } }
     val minus = remember(paint) { Rect().also { paint.getTextBounds("-", 0, 1, it) } }
     // 빼기를 작게 그린 만큼 줄인 글자열 폭.
+    // small 글자를 작게 그리는 조각들(글자열, 작게?).
+    fun runs(s: String): List<Pair<String, Boolean>> =
+        if (small.isEmpty()) listOf(s to false)
+        else buildList {
+            var i = 0
+            while (i < s.length) {
+                val sm = s[i] in small
+                var j = i
+                while (j < s.length && (s[j] in small) == sm) j++
+                add(s.substring(i, j) to sm)
+                i = j
+            }
+        }
     fun widthOf(s: String): Float =
-        if (s.startsWith("-") && minusScale != 1f) paint.measureText("-") * minusScale + paint.measureText(s, 1, s.length)
+        if (small.isNotEmpty()) runs(s).sumOf { (t, sm) -> (paint.measureText(t) * if (sm) suffixScale else 1f).toDouble() }.toFloat()
+        else if (s.startsWith("-") && minusScale != 1f) paint.measureText("-") * minusScale + paint.measureText(s, 1, s.length)
         else paint.measureText(s)
 
     Canvas(modifier) {
@@ -88,7 +105,17 @@ fun FitText(
             nc.save()
             nc.translate(x0, y0)
             nc.scale(sx, sy)
-            if (text.startsWith("-") && minusScale != 1f) {
+            if (small.isNotEmpty()) {
+                var x = 0f
+                for ((t, sm) in runs(text)) {
+                    nc.save()
+                    nc.translate(x, 0f)
+                    if (sm) nc.scale(suffixScale, suffixScale)
+                    nc.drawText(t, 0f, -ref.top.toFloat(), paint)
+                    nc.restore()
+                    x += paint.measureText(t) * if (sm) suffixScale else 1f
+                }
+            } else if (text.startsWith("-") && minusScale != 1f) {
                 // 빼기는 제 높이 가운데를 축으로 줄인다.
                 val cy = -ref.top.toFloat() + minus.exactCenterY()
                 nc.save()

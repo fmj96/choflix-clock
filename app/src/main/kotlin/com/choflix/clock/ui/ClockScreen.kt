@@ -170,6 +170,7 @@ fun ClockScreen(
                     "실내 온도 / 습도",
                     "${indoor?.temperatureC?.roundToInt() ?: "--"}°C / ${indoor?.humidity ?: "--"}%", "",
                     font, settings.infoWeight, main, card, u, d, Modifier.weight(1f),
+                    small = setOf('°', 'C', '%'),
                 )
             }
 
@@ -269,15 +270,14 @@ private fun dustFace(grade: Int): ImageVector = when (grade) {
 @Composable
 private fun SmallCard(
     title: String, value: String, unit: String, font: DigitFont, weight: Int, color: Color, card: Color,
-    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
+    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier, small: Set<Char> = emptySet(),
 ) {
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
         Label(title, color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
-
         FitText(
             value, font, weight, color,
             Modifier.padding(start = u * 10, end = u * 10, top = u * 30, bottom = u * 10).fillMaxSize(),
-            suffix = unit,
+            suffix = unit, small = small,
         )
     }
 }
