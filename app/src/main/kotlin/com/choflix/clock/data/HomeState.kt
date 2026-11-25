@@ -21,6 +21,7 @@ data class BatteryInfo(
 object HomeState {
     val weather = MutableStateFlow<Weather?>(null)
     val place = MutableStateFlow("")
+    val air = MutableStateFlow<Air?>(null)
     val indoor = MutableStateFlow<Indoor?>(null)
     val battery = MutableStateFlow(BatteryInfo())
     /** 마지막 Tuya 오류(설정 화면에 보여준다). 성공하면 지운다. */

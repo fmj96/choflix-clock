@@ -6,6 +6,13 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import kotlin.math.abs
+import com.choflix.clock.data.Air
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -35,7 +42,6 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SentimentVeryDissatisfied
 import androidx.compose.material.icons.outlined.SentimentDissatisfied
-import androidx.compose.material.icons.outlined.SentimentNeutral
 import androidx.compose.material.icons.outlined.SentimentSatisfied
 import androidx.compose.material.icons.outlined.SentimentVerySatisfied
 import androidx.compose.material3.Icon
@@ -75,7 +81,7 @@ import kotlin.math.roundToInt
 
 /**
  * 플립 시계 배치(시안 D).
- *  왼쪽: 바깥 온도(큰 카드) / 실내 온도 / 습도
+ *  왼쪽: 실외 온도(큰 카드, 아래에 최저/최고) / 미세먼지 / 실내 온도·습도
  *  오른쪽 윗줄: 날짜 · (오른쪽 끝) 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) · 와이파이·배터리
  *  오른쪽 아래: 시 카드(왼쪽 위 AM/PM) | 분 카드 — 숫자는 카드에 꽉 맞춰 늘린다.
  * 화면 크기는 시안(1000×450)을 기준으로 한 단위 u 로 비례해 잡는다.
@@ -98,6 +104,7 @@ fun ClockScreen(
 
     val weather by HomeState.weather.collectAsState()
     val indoor by HomeState.indoor.collectAsState()
+    val air by HomeState.air.collectAsState()
     val battery by HomeState.battery.collectAsState()
     val online = rememberOnline()
     val update by Updater.available.collectAsState()
@@ -127,7 +134,7 @@ fun ClockScreen(
                 .padding(start = u * 20, end = u * 24, top = u * 16, bottom = u * 18),
             horizontalArrangement = Arrangement.spacedBy(u * 12),
         ) {
-            // ── 왼쪽: 바깥 온도 / 실내 온도 / 습도 ──
+            // ── 왼쪽: 실외 온도 / 미세먼지 / 실내 온도·습도 ──
             Column(Modifier.width(u * 226).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 8)) {
                 Box(Modifier.fillMaxWidth().weight(2.2f).clip(RoundedCornerShape(u * 20)).background(card)) {
                     Label("실외 온도", main, (u * 17).sp(), Modifier.padding(start = u * 12, top = u * 12))
@@ -136,7 +143,7 @@ fun ClockScreen(
                     }
                     FitText(
                         weather?.currentC?.roundToInt()?.toString() ?: "--", font, settings.infoWeight, main,
-                        Modifier.padding(start = u * 14, end = u * 46, top = u * 60, bottom = u * 14).fillMaxSize(),
+                        Modifier.padding(start = u * 14, end = u * 46, top = u * 60, bottom = u * 40).fillMaxSize(),
                         stretch = true,
                         // 크기는 "-20" 기준으로 고정 — 한 자리일 때 숫자가 옆으로 퍼지지 않게. 빼기는 작게.
                         reference = "-20",
@@ -146,12 +153,24 @@ fun ClockScreen(
                         "°C", color = main, fontSize = (u * 30).sp(), fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.align(Alignment.TopEnd).padding(top = u * 56, end = u * 12),
                     )
+                    // 맨 아래 작게: 오늘 최저/최고.
+                    val lo = weather?.minC?.roundToInt()
+                    val hi = weather?.maxC?.roundToInt()
+                    if (lo != null && hi != null) {
+                        Text(
+                            "최저 $lo° / 최고 $hi°", color = main.copy(alpha = 0.7f), fontSize = (u * 17).sp(),
+                            fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
+                            modifier = Modifier.align(Alignment.BottomStart).padding(start = u * 14, bottom = u * 10),
+                        )
+                    }
                 }
-                SmallCard("실내 온도", indoor?.temperatureC?.let { "%.1f".format(Locale.US, it) } ?: "--.-", "°C",
-                    font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
-                SmallCard("실내 습도", indoor?.humidity?.toString() ?: "--", "%",
+                DustCard(air, font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
+                // 소수점은 빼고 온도·습도를 한 줄에 — 글자는 칸에 맞춰 줄어든다.
+                SmallCard(
+                    "실내 온도 / 습도",
+                    "${indoor?.temperatureC?.roundToInt() ?: "--"}°C / ${indoor?.humidity ?: "--"}%", "",
                     font, settings.infoWeight, main, card, u, d, Modifier.weight(1f),
-                    corner = indoor?.humidity?.let(::humidityFace))
+                )
             }
 
             // ── 오른쪽: 윗줄과 플립 카드 ──
@@ -214,17 +233,47 @@ private fun Label(text: String, color: Color, size: TextUnit, modifier: Modifier
     Text(text, color = color.copy(alpha = 0.6f), fontSize = size, maxLines = 1, modifier = modifier)
 }
 
+/** 미세먼지 카드: 등급(좋음·보통·나쁨·매우나쁨)과 오른쪽에 표정. */
+@Composable
+private fun DustCard(
+    air: Air?, font: DigitFont, weight: Int, color: Color, card: Color,
+    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
+) {
+    Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
+        Label("미세먼지", color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
+        Row(
+            Modifier.fillMaxSize().padding(start = u * 12, end = u * 12, top = u * 26, bottom = u * 4),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val g = air?.grade
+            Text(
+                g?.let { DustNames[it] } ?: "--", color = color, fontSize = with(d) { (u * 36).toSp() },
+                fontFamily = font.family, fontWeight = FontWeight(font.nearest(weight)), maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+            if (g != null) Icon(dustFace(g), null, tint = color, modifier = Modifier.size(u * 46))
+        }
+    }
+}
+
+private val DustNames = listOf("좋음", "보통", "나쁨", "매우나쁨")
+
+private fun dustFace(grade: Int): ImageVector = when (grade) {
+    0 -> Icons.Outlined.SentimentVerySatisfied
+    1 -> Icons.Outlined.SentimentSatisfied
+    2 -> Icons.Outlined.SentimentDissatisfied
+    else -> Icons.Outlined.SentimentVeryDissatisfied
+}
+
 /** 실내 온도·습도 카드: 제목은 왼쪽 위, 숫자는 가운데(비율 유지). */
 @Composable
 private fun SmallCard(
     title: String, value: String, unit: String, font: DigitFont, weight: Int, color: Color, card: Color,
-    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier, corner: ImageVector? = null,
+    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
 ) {
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
         Label(title, color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
-        corner?.let {
-            Icon(it, null, tint = color, modifier = Modifier.align(Alignment.TopEnd).padding(top = u * 6, end = u * 8).size(u * 24))
-        }
+
         FitText(
             value, font, weight, color,
             Modifier.padding(start = u * 10, end = u * 10, top = u * 30, bottom = u * 10).fillMaxSize(),
@@ -239,12 +288,29 @@ private fun FlipCard(
     digits: String, corner: String?, font: DigitFont, weight: Int, color: Color, card: Color,
     u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
 ) {
-    Box(modifier.fillMaxHeight().clip(RoundedCornerShape(u * 26)).background(card)) {
-        FitText(
-            digits, font, weight, color,
-            Modifier.padding(start = u * 30, end = u * 30, top = u * 46, bottom = u * 30).fillMaxSize(),
-            stretch = true,
-        )
+    // 숫자가 바뀌면 진짜 플립 시계처럼 넘긴다: 옛 숫자 위 반이 가운데 축으로 접혀 내려오고(0~½),
+    // 이어서 새 숫자 아래 반이 펴지며 내려앉는다(½~1). 그동안 뒤에는 새 위 반과 옛 아래 반이 보인다.
+    var shown by remember { mutableStateOf(digits) }
+    var prev by remember { mutableStateOf(digits) }
+    val flip = remember { Animatable(1f) }
+    LaunchedEffect(digits) {
+        if (digits == shown) return@LaunchedEffect
+        prev = shown
+        shown = digits
+        flip.snapTo(0f)
+        flip.animateTo(1f, tween(700, easing = FastOutSlowInEasing))
+    }
+    val p = flip.value
+
+    Box(modifier.fillMaxHeight()) {
+        val face = @Composable { text: String, top: Boolean, angle: Float ->
+            FlipHalf(text, top, angle, font, weight, color, card, u)
+        }
+        face(shown, true, 0f)
+        face(if (p < 1f) prev else shown, false, 0f)
+        if (p < 0.5f) face(prev, true, -180f * p)
+        else if (p < 1f) face(shown, false, 180f * (1f - p))
+
         Box(Modifier.align(Alignment.Center).fillMaxWidth().height(u * 4).background(Color.Black))
         if (corner != null) {
             Text(
@@ -253,6 +319,36 @@ private fun FlipCard(
                 modifier = Modifier.padding(start = u * 14, top = u * 10),
             )
         }
+    }
+}
+
+/** 플립 카드의 위 또는 아래 반쪽. angle 만큼 가운데 가로축으로 돌리고, 기울수록 어둡게 그린다. */
+@Composable
+private fun FlipHalf(
+    digits: String, top: Boolean, angle: Float, font: DigitFont, weight: Int, color: Color, card: Color, u: Dp,
+) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                rotationX = angle
+                cameraDistance = 14f * density
+            }
+            .drawWithContent {
+                val half = size.height / 2f
+                clipRect(top = if (top) 0f else half, bottom = if (top) half else size.height) {
+                    this@drawWithContent.drawContent()
+                    if (angle != 0f) drawRect(Color.Black.copy(alpha = 0.45f * abs(angle) / 90f))
+                }
+            }
+            .clip(RoundedCornerShape(u * 26))
+            .background(card)
+    ) {
+        FitText(
+            digits, font, weight, color,
+            Modifier.padding(start = u * 30, end = u * 30, top = u * 46, bottom = u * 30).fillMaxSize(),
+            stretch = true,
+        )
     }
 }
 
@@ -381,12 +477,3 @@ private val SHIFTS = listOf(
     0.dp to 0.dp, 16.dp to 0.dp, 11.dp to 11.dp, 0.dp to 16.dp,
     (-11).dp to 11.dp, (-16).dp to 0.dp, (-11).dp to (-11).dp, 0.dp to (-16).dp,
 )
-
-/** 실내 습도 표정 — 40~60% 가 가장 쾌적, 멀어질수록 찡그린다. */
-private fun humidityFace(h: Int): ImageVector = when (h) {
-    in 40..60 -> Icons.Outlined.SentimentVerySatisfied
-    in 35..65 -> Icons.Outlined.SentimentSatisfied
-    in 30..70 -> Icons.Outlined.SentimentNeutral
-    in 20..80 -> Icons.Outlined.SentimentDissatisfied
-    else -> Icons.Outlined.SentimentVeryDissatisfied
-}

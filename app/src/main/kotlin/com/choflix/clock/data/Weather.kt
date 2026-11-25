@@ -24,12 +24,26 @@ data class Weather(
     val cloudPercent: Int = 0,
 )
 
+/** 지금 미세먼지(㎍/㎥). */
+data class Air(val pm10: Double, val pm25: Double) {
+    /**
+     * 우리나라 환경부 기준 등급 — 0 좋음, 1 보통, 2 나쁨, 3 매우나쁨. 둘 중 나쁜 쪽을 따른다.
+     *  PM10 : 30 / 80 / 150,  PM2.5 : 15 / 35 / 75
+     */
+    val grade: Int
+        get() {
+            fun g(v: Double, a: Int, b: Int, c: Int) = when { v <= a -> 0; v <= b -> 1; v <= c -> 2; else -> 3 }
+            return maxOf(g(pm10, 30, 80, 150), g(pm25, 15, 35, 75))
+        }
+}
+
 data class Place(val name: String, val lat: Double, val lon: Double)
 
 /**
  * 키가 필요 없는 곳만 쓴다.
  *  - open-meteo : 현재 기온·날씨 코드와 오늘 최저/최고.
  *  - met.no     : open-meteo 가 통째로 응답하지 않는 날이 있어(연결 시간 초과) 대신 쓴다.
+ *  - open-meteo 대기질 : 미세먼지(PM10, PM2.5).
  *  - ipwho.is   : 위치를 정하지 않았을 때 IP 로 대략적인 도시.
  */
 object WeatherRepository {
@@ -39,6 +53,18 @@ object WeatherRepository {
 
     suspend fun fetch(lat: Double, lon: Double): Weather? = withContext(Dispatchers.IO) {
         runCatching { openMeteo(lat, lon) }.getOrNull() ?: runCatching { metNo(lat, lon) }.getOrNull()
+    }
+
+    /** open-meteo 대기질(키 없음). */
+    suspend fun fetchAir(lat: Double, lon: Double): Air? = withContext(Dispatchers.IO) {
+        runCatching {
+            val cur = getJson(
+                "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=pm10,pm2_5"
+            )?.optJSONObject("current") ?: return@runCatching null
+            val pm10 = cur.optDouble("pm10")
+            val pm25 = cur.optDouble("pm2_5")
+            if (pm10.isNaN() || pm25.isNaN()) null else Air(pm10, pm25)
+        }.getOrNull()
     }
 
     private fun openMeteo(lat: Double, lon: Double): Weather? {
