@@ -18,6 +18,13 @@ data class Indoor(val temperatureC: Double?, val humidity: Int?)
 
 class TuyaException(message: String) : Exception(message)
 
+/** 실내 기록 한 점. 온도와 습도는 따로 보고되므로 한쪽만 있을 수 있다. */
+data class IndoorSample(val timeMs: Long, val temperatureC: Double?, val humidity: Double?)
+
+private val TEMP_CODES = listOf("va_temperature", "temp_current", "temp_indoor")
+private val HUM_CODES = listOf("va_humidity", "humidity_value", "humidity_indoor")
+private const val MAX_PAGES = 15
+
 data class TuyaSwitch(val code: String, val on: Boolean)
 
 data class TuyaDevice(
@@ -69,6 +76,58 @@ class TuyaCloudClient(
             }
         }
         Indoor(temp, hum)
+    }
+
+    /**
+     * 센서가 보고한 온·습도 기록(시간순) — Tuya 에 남은 만큼(보통 7일). 한 번에 100개씩 넘겨 받는다.
+     * 새 경로(v2 report-logs)가 막혀 있으면 예전 경로(v1 logs)로.
+     */
+    suspend fun indoorHistory(sensorId: String, fromMs: Long, toMs: Long): List<IndoorSample> = withContext(Dispatchers.IO) {
+        val scale = scales.getOrPut(sensorId) { runCatching { specScales(sensorId) }.getOrDefault(emptyMap()) }
+        val codes = (TEMP_CODES + HUM_CODES).joinToString(",")
+        val logs = runCatching {
+            pages { key ->
+                val r = request(
+                    "GET",
+                    "/v2.0/cloud/thing/$sensorId/report-logs?codes=$codes&start_time=$fromMs&end_time=$toMs&size=100" +
+                        (key?.let { "&last_row_key=$it" } ?: ""),
+                ) as? JSONObject
+                Triple(r?.optJSONArray("logs"), r?.optBoolean("has_more") == true, r?.optString("last_row_key"))
+            }
+        }.getOrElse {
+            pages { key ->
+                val r = request(
+                    "GET",
+                    "/v1.0/devices/$sensorId/logs?type=7&codes=$codes&start_time=$fromMs&end_time=$toMs&size=100" +
+                        (key?.let { "&start_row_key=$it" } ?: ""),
+                ) as? JSONObject
+                Triple(r?.optJSONArray("logs"), r?.optBoolean("has_next") == true, r?.optString("next_row_key"))
+            }
+        }
+        logs.mapNotNull { o ->
+            val code = o.optString("code")
+            val v = o.optString("value").toDoubleOrNull() ?: return@mapNotNull null
+            val t = o.optLong("event_time").takeIf { it > 0 } ?: return@mapNotNull null
+            when (code) {
+                in TEMP_CODES -> IndoorSample(t, scaled(v, scale[code], guessScale = if (v > 60) 1 else 0), null)
+                in HUM_CODES -> IndoorSample(t, null, scaled(v, scale[code], guessScale = if (v > 100) 1 else 0))
+                else -> null
+            }
+        }.sortedBy { it.timeMs }
+    }
+
+    /** 쪽 나눔을 따라가며 모은다. 호출 한도를 생각해 최대 [MAX_PAGES] 쪽. */
+    private suspend fun pages(fetch: suspend (String?) -> Triple<JSONArray?, Boolean, String?>): List<JSONObject> {
+        val out = mutableListOf<JSONObject>()
+        var key: String? = null
+        repeat(MAX_PAGES) {
+            val (arr, more, next) = fetch(key)
+            arr ?: throw TuyaException("기록 형식이 다릅니다")
+            for (i in 0 until arr.length()) arr.optJSONObject(i)?.let(out::add)
+            if (!more || next.isNullOrEmpty()) return out
+            key = next
+        }
+        return out
     }
 
     /** 플러그 전원. 성공하면 true. */

@@ -92,6 +92,7 @@ fun ClockScreen(
     night: Boolean,
     onOpenDevices: () -> Unit,
     onOpenWeather: () -> Unit,
+    onOpenIndoor: () -> Unit,
     onOpenSettings: () -> Unit,
     onBrightness: () -> Unit,
 ) {
@@ -171,7 +172,9 @@ fun ClockScreen(
                 SmallCard(
                     "실내 온도 / 습도",
                     "${indoor?.temperatureC?.roundToInt() ?: "--"}°C / ${indoor?.humidity ?: "--"}%", "",
-                    font, settings.infoWeight, main, card, u, d, Modifier.weight(1f),
+                    font, settings.infoWeight, main, card, u, d,
+                    // 누르면 시간대별 그래프.
+                    Modifier.weight(1f).clip(RoundedCornerShape(u * 20)).clickable(onClickLabel = "실내 그래프", onClick = onOpenIndoor),
                     small = setOf('°', 'C', '%'), half = setOf('/'),
                 )
             }

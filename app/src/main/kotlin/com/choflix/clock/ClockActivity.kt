@@ -24,6 +24,7 @@ import com.choflix.clock.service.BatteryPlugMonitorService
 import com.choflix.clock.ui.ClockScreen
 import com.choflix.clock.ui.DevicesScreen
 import com.choflix.clock.ui.SettingsScreen
+import com.choflix.clock.ui.IndoorScreen
 import com.choflix.clock.ui.WeekScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -51,6 +52,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     private var showSettings by mutableStateOf(false)
     private var showDevices by mutableStateOf(false)
     private var showWeek by mutableStateOf(false)
+    private var showIndoor by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,8 +82,8 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
         }
 
         setContent {
-            BackHandler(enabled = showSettings || showDevices || showWeek) {
-                showSettings = false; showDevices = false; showWeek = false
+            BackHandler(enabled = showSettings || showDevices || showWeek || showIndoor) {
+                showSettings = false; showDevices = false; showWeek = false; showIndoor = false
             }
             when {
                 showSettings -> SettingsScreen(settings, onClose = {
@@ -92,10 +94,12 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
                 })
                 showDevices -> DevicesScreen(settings, onClose = { showDevices = false })
                 showWeek -> WeekScreen(settings, onClose = { showWeek = false })
+                showIndoor -> IndoorScreen(settings, onClose = { showIndoor = false })
                 else -> ClockScreen(
                     settings, night = night,
                     onOpenDevices = { showDevices = true },
                     onOpenWeather = { showWeek = true },
+                    onOpenIndoor = { showIndoor = true },
                     onOpenSettings = { showSettings = true },
                     onBrightness = { applied = -2f; applyBrightness() },
                 )

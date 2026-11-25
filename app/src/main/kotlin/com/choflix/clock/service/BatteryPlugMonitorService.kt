@@ -20,6 +20,7 @@ import com.choflix.clock.ClockActivity
 import com.choflix.clock.R
 import com.choflix.clock.data.BatteryInfo
 import com.choflix.clock.data.HomeState
+import com.choflix.clock.data.IndoorHistory
 import com.choflix.clock.data.Settings
 import com.choflix.clock.data.TuyaCloudClient
 import com.choflix.clock.data.Updater
@@ -124,9 +125,11 @@ class BatteryPlugMonitorService : Service() {
     private suspend fun pollIndoor() {
         val c = tuya() ?: return
         val id = settings.sensorDeviceId.ifEmpty { return }
-        runCatching { c.indoor(id) }
+        val r = runCatching { c.indoor(id) }
             .onSuccess { HomeState.indoor.value = it; HomeState.tuyaError.value = null }
             .onFailure { HomeState.tuyaError.value = "온습도: ${it.message}" }
+        // 그래프용 기록.
+        r.getOrNull()?.let { v -> runCatching { IndoorHistory.add(this, v) } }
     }
 
     private suspend fun pollWeather(): Boolean {
