@@ -15,6 +15,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontWeight
 import kotlin.math.min
+import kotlin.math.roundToInt
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
 
 /**
  * 숫자를 칸에 맞춰 그린다.
@@ -31,6 +34,8 @@ import kotlin.math.min
  *
  * small 에 든 글자(예: °, C, %)는 글자열 가운데에 있어도 suffix 처럼 작게 윗선에 맞춘다.
  * half 에 든 글자(예: /)는 절반 크기로 숫자 높이 가운데에 둔다.
+ *
+ * wrapWidth 면 높이를 꽉 채운 크기에 필요한 만큼만 폭을 차지한다(옆에 다른 글자를 붙일 때).
  */
 @Composable
 fun FitText(
@@ -47,6 +52,7 @@ fun FitText(
     minusScale: Float = 1f,
     small: Set<Char> = emptySet(),
     half: Set<Char> = emptySet(),
+    wrapWidth: Boolean = false,
 ) {
     val resolver = LocalFontFamilyResolver.current
     val w = font.nearest(weight)
@@ -83,7 +89,16 @@ fun FitText(
         else if (s.startsWith("-") && minusScale != 1f) paint.measureText("-") * minusScale + paint.measureText(s, 1, s.length)
         else paint.measureText(s)
 
-    Canvas(modifier) {
+    val wrap = if (!wrapWidth) Modifier else Modifier.layout { m, c ->
+        val gap = if (suffix.isEmpty()) 0f else 4f
+        val sufW = if (suffix.isEmpty()) 0f else paint.measureText(suffix) * suffixScale
+        val aspect = (widthOf(text) + gap + sufW) / ref.height().coerceAtLeast(1)
+        val h = c.maxHeight
+        val w = (h * aspect).roundToInt().coerceIn(c.minWidth, c.maxWidth)
+        val p = m.measure(Constraints.fixed(w, h))
+        layout(w, h) { p.place(0, 0) }
+    }
+    Canvas(modifier.then(wrap)) {
         if (text.isEmpty() || ref.height() <= 0) return@Canvas
         paint.color = color.toArgb()
         val textW = widthOf(text)

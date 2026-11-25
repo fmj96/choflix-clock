@@ -72,7 +72,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.choflix.clock.data.BatteryInfo
 import com.choflix.clock.data.HomeState
-import androidx.compose.foundation.layout.widthIn
 import com.choflix.clock.data.Holidays
 import com.choflix.clock.data.Holiday
 import com.choflix.clock.data.Events
@@ -208,7 +207,12 @@ fun ClockScreen(
                             .clickable(onClickLabel = "달력", onClick = onOpenCalendar),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        // 날짜·요일 바로 옆에 기념일, 둘을 묶어 상자 가운데.
+                        Row(
+                            Modifier.fillMaxSize().padding(horizontal = u * 10),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
                             // 상자에 꽉 맞춰(비율 유지) 크게 — 위아래 여백은 조금만.
                             FitText(
                                 "%02d/%02d %s".format(
@@ -216,15 +220,12 @@ fun ClockScreen(
                                     now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
                                 ),
                                 font, settings.infoWeight, main,
-                                Modifier.weight(1f).fillMaxHeight().padding(horizontal = u * 10, vertical = u * 7),
-                                half = setOf('/'),
+                                Modifier.fillMaxHeight().padding(vertical = u * 7),
+                                half = setOf('/'), wrapWidth = true,
                             )
                             // 카드 제목(날씨·미세먼지)과 같은 크기·색.
                             if (todayNote.isNotEmpty()) {
-                                Label(
-                                    todayNote, main, (u * 15).sp(),
-                                    Modifier.widthIn(max = u * 140).padding(end = u * 10),
-                                )
+                                Label(todayNote, main, (u * 15).sp(), Modifier.padding(start = u * 10))
                             }
                         }
                     }
