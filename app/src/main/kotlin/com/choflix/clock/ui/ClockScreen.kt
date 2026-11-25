@@ -125,7 +125,7 @@ fun ClockScreen(
             // ── 왼쪽: 바깥 온도 / 실내 온도 / 습도 ──
             Column(Modifier.width(u * 226).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 8)) {
                 Box(Modifier.fillMaxWidth().weight(2.2f).clip(RoundedCornerShape(u * 20)).background(card)) {
-                    Label("바깥 온도", main, (u * 17).sp(), Modifier.padding(start = u * 12, top = u * 12))
+                    Label("실외 온도", main, (u * 17).sp(), Modifier.padding(start = u * 12, top = u * 12))
                     Box(Modifier.align(Alignment.TopEnd).padding(top = u * 8, end = u * 10).size(u * 44)) {
                         weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main) }
                     }
@@ -144,7 +144,7 @@ fun ClockScreen(
                 }
                 SmallCard("실내 온도", indoor?.temperatureC?.let { "%.1f".format(Locale.US, it) } ?: "--.-", "°C",
                     font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
-                SmallCard("습도", indoor?.humidity?.toString() ?: "--", "%",
+                SmallCard("실내 습도", indoor?.humidity?.toString() ?: "--", "%",
                     font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
             }
 
