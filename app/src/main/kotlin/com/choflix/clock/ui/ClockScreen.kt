@@ -174,13 +174,18 @@ fun ClockScreen(
 
             // ── 오른쪽: 윗줄과 플립 카드 ──
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 10)) {
-                // 윗줄도 아래 플립 카드처럼 반씩 나눈다: 왼쪽 반(시 카드 위) 가운데에 날짜·요일.
+                // 윗줄도 아래 플립 카드처럼 반씩 나눈다: 왼쪽 반(시 카드 위)은 날짜·요일 상자.
                 Row(Modifier.fillMaxWidth().height(u * 46), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
-                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                    // 날짜 상자: 폭은 시 카드와 같고 높이·모양·색은 버튼과 같게.
+                    Box(
+                        Modifier.weight(1f).align(Alignment.CenterVertically).height(u * 44)
+                            .clip(RoundedCornerShape(u * 12)).background(button),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Text(
                             "${now.monthValue}월 ${now.dayOfMonth}일 " +
                                 now.dayOfWeek.getDisplayName(DateTextStyle.FULL, Locale.KOREAN),
-                            color = main, fontSize = (u * 32).sp(), fontFamily = font.family,
+                            color = main, fontSize = (u * 28).sp(), fontFamily = font.family,
                             fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
                         )
                     }
@@ -205,7 +210,7 @@ fun ClockScreen(
                                 tint = if (online) main else WarnRed, modifier = Modifier.size(u * 24),
                             )
                             BatteryBadge(battery, main, WarnRed, u * 26, d)
-                    }
+                        }
                     }
                 }
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
