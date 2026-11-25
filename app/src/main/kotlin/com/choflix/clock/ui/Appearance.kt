@@ -1,72 +1,64 @@
 package com.choflix.clock.ui
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.unit.TextUnit
 import com.choflix.clock.R
 
+/** 굵기 단계(설정의 굵기 고르기). */
+val WeightNames: Map<Int, String> = mapOf(
+    300 to "가늘게", 400 to "보통", 500 to "중간", 600 to "약간 굵게",
+    700 to "굵게", 800 to "더 굵게", 900 to "아주 굵게",
+)
+
+private fun statics(vararg fonts: Pair<Int, Int>) =
+    FontFamily(fonts.map { (res, w) -> Font(res, FontWeight(w)) })
+
+/** 가변 글꼴 한 파일에서 굵기마다 한 벌씩 꺼낸다(안드로이드 8.0+). */
+@OptIn(ExperimentalTextApi::class)
+private fun variable(res: Int, range: IntRange) = FontFamily(
+    (100..900 step 100).filter { it in range }.map { w ->
+        Font(res, FontWeight(w), variationSettings = FontVariation.Settings(FontVariation.weight(w)))
+    }
+)
+
 /**
- * 숫자 글꼴(설정에서 고른다). 글자 폭(em)은 글꼴 파일에서 잰 값 — 칸 폭에 맞춰 크기를 정할 때 쓴다.
- * 고정폭 숫자(tnum)를 켜서 분이 바뀌어도 자리가 흔들리지 않게 한다.
+ * 숫자 글꼴(설정에서 고른다). 숫자는 칸에 맞춰 늘리거나 줄여 그리므로([FitText]) 글자 폭을
+ * 따로 잴 필요가 없다. weights 는 이 글꼴에 실제로 있는 굵기 — 설정 화면이 이것만 보여 준다.
  */
-enum class DigitFont(
-    val label: String,
-    val family: FontFamily,
-    val digit: Float, val dot: Float, val minus: Float, val colon: Float,
-    /** 숫자 글자의 실제 높이(em). 세로로 늘릴 배율을 정할 때 쓴다. */
-    val digitHeight: Float = 0.70f,
-    /** 큰 시각용 아주 굵은 판(Black)과 그 숫자·콜론 폭. 없으면 보통 판을 그대로 쓴다. */
-    val heavyFamily: FontFamily? = null,
-    val heavyDigit: Float = digit, val heavyColon: Float = colon,
-) {
-    // 폭이 좁아 같은 화면 폭에 가장 크게 들어간다.
+enum class DigitFont(val label: String, val family: FontFamily, val weights: List<Int>) {
     Condensed(
-        "Barlow Condensed (기본)", FontFamily(Font(R.font.barlow_condensed_semibold)), 0.475f, 0.211f, 0.325f, 0.252f,
-        heavyFamily = FontFamily(Font(R.font.barlow_condensed_black)), heavyDigit = 0.54f, heavyColon = 0.318f,
+        "Barlow Condensed (기본)",
+        statics(
+            R.font.barlowc_light to 300, R.font.barlowc_regular to 400, R.font.barlowc_medium to 500,
+            R.font.barlowc_semibold to 600, R.font.barlowc_bold to 700, R.font.barlowc_extrabold to 800,
+            R.font.barlowc_black to 900,
+        ),
+        listOf(300, 400, 500, 600, 700, 800, 900),
     ),
     Barlow(
-        "Barlow", FontFamily(Font(R.font.barlow_semibold)), 0.538f, 0.273f, 0.404f, 0.355f,
-        heavyFamily = FontFamily(Font(R.font.barlow_black)), heavyDigit = 0.556f, heavyColon = 0.381f,
+        "Barlow",
+        statics(R.font.barlow_regular to 400, R.font.barlow_semibold to 600, R.font.barlow_bold to 700, R.font.barlow_black to 900),
+        listOf(400, 600, 700, 900),
     ),
-    // 전자시계(7세그먼트). 점은 앞 숫자에 겹쳐 그려져 폭이 없다.
-    Segment("전자시계 (DSEG7)", FontFamily(Font(R.font.dseg7_modern_bold)), 0.816f, 0f, 0.816f, 0.2f, 0.95f),
-    // 폰 기본 글꼴(Roboto·MiSans 등) — 기기마다 달라 넉넉히 잡는다.
-    System(
-        "폰 기본 글꼴", FontFamily.Default, 0.58f, 0.27f, 0.36f, 0.3f, 0.72f,
-        heavyFamily = FontFamily.Default, heavyDigit = 0.62f, heavyColon = 0.34f,
-    );
+    Oswald("Oswald", variable(R.font.oswald_var, 200..700), listOf(300, 400, 500, 600, 700)),
+    RobotoCondensed("Roboto Condensed", variable(R.font.robotocondensed_var, 100..900), listOf(300, 400, 500, 600, 700, 800, 900)),
+    Teko("Teko", variable(R.font.teko_var, 300..700), listOf(300, 400, 500, 600, 700)),
+    Bebas("Bebas Neue", statics(R.font.bebasneue_regular to 400), listOf(400)),
+    Anton("Anton", statics(R.font.anton_regular to 400), listOf(400)),
+    // 전자시계(7세그먼트).
+    Segment(
+        "전자시계 (DSEG7)",
+        statics(R.font.dseg7_light to 300, R.font.dseg7_regular to 400, R.font.dseg7_bold to 700),
+        listOf(300, 400, 700),
+    ),
+    System("폰 기본 글꼴", FontFamily.Default, listOf(300, 400, 500, 600, 700, 800, 900));
 
-    /** 이 글꼴로 쓴 글자열의 폭(em). 4% 여유. */
-    fun em(s: String): Float = 1.04f * s.sumOf {
-        when (it) { '.' -> dot; '-' -> minus; ':' -> colon; else -> digit }.toDouble()
-    }.toFloat()
-
-    /** 줄 높이를 1em 으로 줄여 위아래 빈 여백 없이 칸을 채운다. */
-    fun style(size: TextUnit, color: Color) = TextStyle(
-        fontFamily = family, fontSize = size, color = color, fontFeatureSettings = "tnum",
-        fontWeight = if (this == System) FontWeight.Medium else null,
-        lineHeight = size,
-        platformStyle = PlatformTextStyle(includeFontPadding = false),
-        lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
-    )
-
-    /** 큰 시각("10:30")의 폭(em) — 아주 굵게면 굵은 판 기준. */
-    fun timeEm(heavy: Boolean): Float =
-        if (heavy && heavyFamily != null) 1.04f * (4 * heavyDigit + heavyColon) else em("88:88")
-
-    /** 큰 시각 글자 모양. 아주 굵게면 Black 판(폰 기본 글꼴은 가장 굵은 굵기). */
-    fun timeStyle(size: TextUnit, color: Color, heavy: Boolean): TextStyle {
-        if (!heavy || heavyFamily == null) return style(size, color)
-        return style(size, color).copy(
-            fontFamily = heavyFamily,
-            fontWeight = if (this == System) FontWeight.Black else null,
-        )
-    }
+    /** 고른 굵기를 이 글꼴에 있는 가장 가까운 굵기로. */
+    fun nearest(weight: Int): Int = weights.minByOrNull { kotlin.math.abs(it - weight) } ?: 400
 
     companion object {
         fun of(name: String) = entries.firstOrNull { it.name == name } ?: Condensed

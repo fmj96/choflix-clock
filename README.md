@@ -7,7 +7,9 @@
 - Tuya 기기 켜기/끄기 화면
 - **배터리 부풀음 방지** — Tuya 스마트 플러그로 배터리를 40~50% 사이에서만 충전, 38°C 이상이면 충전 차단
 - 조도 센서로 밝기 자동 조절, 정한 시간대(기본 0~6시)에는 밝기 상한(기본 15%) + 엠버색 — 설정에서 변경
-- 글자·아이콘 색(기본 흰색)과 숫자 글꼴(Barlow Condensed·Barlow·전자시계·폰 기본)을 설정에서 선택
+- 플립 시계 배치: 왼쪽 바깥 온도·실내 온도·습도 카드, 오른쪽 날짜와 시·분 카드(숫자는 카드에 꽉 맞춤)
+- 위쪽 가운데 버튼: 전구(Tuya 기기), 해(밝기 바로 조절), 톱니바퀴(설정)
+- 글자·아이콘 색(기본 흰색), 숫자 글꼴 9가지(Barlow Condensed·Barlow·Oswald·Roboto Condensed·Teko·Bebas Neue·Anton·전자시계·폰 기본)와 굵기(시계·정보 따로)를 설정에서 선택
 - OLED 번인 방지 — 1분마다 화면 전체를 16dp 안에서 조금씩 이동
 - 서버 없이 폰 혼자 동작 (Tuya Cloud API 를 앱에서 바로 호출)
 
@@ -17,8 +19,8 @@
 
 ## 사용
 
-- 시계 오른쪽 위 **전구**를 누르면 기기 화면 — Tuya 에 등록된 기기를 골라 바로 켜고 끕니다(여러 구 멀티탭은 구마다). 30초 동안 손대지 않으면 시계로 돌아갑니다.
-- 시계 오른쪽 위 **톱니바퀴**를 누르면 설정이 열립니다.
+- 위쪽 가운데 **전구**를 누르면 기기 화면 — Tuya 에 등록된 기기를 골라 바로 켜고 끕니다(여러 구 멀티탭은 구마다). 30초 동안 손대지 않으면 시계로 돌아갑니다.
+- 위쪽 가운데 **해**는 밝기를 바로 조절('자동'으로 되돌림), **톱니바퀴**는 설정입니다.
 - **날씨 위치**: 지역 이름으로 검색해 고르거나, '자동'으로 두면 인터넷 주소로 대략 찾습니다.
   날씨는 [Open-Meteo](https://open-meteo.com) (응답이 없으면 [MET Norway](https://api.met.no)) 를 씁니다. 키가 필요 없습니다.
 
@@ -67,4 +69,4 @@ source env.sh            # JDK 17, Android SDK 위치
 
 ## 라이선스
 
-MIT. 숫자 글꼴 [Barlow](https://github.com/jpt/barlow), [DSEG](https://github.com/keshikan/DSEG) (SIL OFL 1.1).
+MIT. 숫자 글꼴은 모두 SIL OFL 1.1 — Barlow, Oswald, Roboto Condensed, Teko, Bebas Neue, Anton, DSEG (docs/licenses/).

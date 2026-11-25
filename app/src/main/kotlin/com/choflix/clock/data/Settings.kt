@@ -26,10 +26,18 @@ class Settings(context: Context) {
         get() = p.getString("font", "Condensed") ?: "Condensed"
         set(v) = p.edit().putString("font", v).apply()
 
-    /** 큰 시각만 아주 굵게(Black). */
-    var heavyClock: Boolean
-        get() = p.getBoolean("heavyClock", true)
-        set(v) = p.edit().putBoolean("heavyClock", v).apply()
+    /** 시계 숫자 굵기(300~900). */
+    var clockWeight: Int
+        get() = p.getInt("clockWeight", 600)
+        set(v) = p.edit().putInt("clockWeight", v).apply()
+    /** 날짜·기온·습도 숫자 굵기(300~900). */
+    var infoWeight: Int
+        get() = p.getInt("infoWeight", 600)
+        set(v) = p.edit().putInt("infoWeight", v).apply()
+    /** 밝기 버튼으로 손수 정한 밝기(0~100, 폰 밝기 막대 기준). -1 이면 자동(조도 센서). */
+    var manualBrightness: Int
+        get() = p.getInt("manualBrightness", -1)
+        set(v) = p.edit().putInt("manualBrightness", v).apply()
 
     // ── 시간대별 자동 밝기(디머) ──
     var dimEnabled: Boolean

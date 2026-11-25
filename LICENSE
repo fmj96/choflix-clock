@@ -21,6 +21,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ---
-Bundled fonts (SIL Open Font License 1.1):
-- Barlow, Barlow Condensed (SemiBold, Black) (c) The Barlow Project Authors — docs/licenses/Barlow-OFL.txt
-- DSEG (c) keshikan — docs/licenses/DSEG-OFL.txt
+Bundled fonts (SIL Open Font License 1.1) — licenses in docs/licenses/:
+- Barlow, Barlow Condensed (c) The Barlow Project Authors
+- Oswald (c) The Oswald Project Authors
+- Roboto Condensed (c) The Roboto Condensed Project Authors
+- Teko (c) Indian Type Foundry
+- Bebas Neue (c) Dharma Type
+- Anton (c) The Anton Project Authors
+- DSEG (c) keshikan

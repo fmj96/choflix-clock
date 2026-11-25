@@ -33,7 +33,7 @@ import kotlin.math.pow
 
 /**
  * 가로 전체화면 시계. 화면을 끄지 않고, 조도 센서로 밝기를 스스로 맞춘다.
- * 오른쪽 위 전구는 기기 화면, 톱니바퀴는 설정.
+ * 위쪽 가운데 버튼: 전구는 기기 화면, 해는 밝기 바로 조절, 톱니바퀴는 설정.
  */
 class ClockActivity : ComponentActivity(), SensorEventListener {
 
@@ -91,6 +91,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
                     settings, night = night,
                     onOpenDevices = { showDevices = true },
                     onOpenSettings = { showSettings = true },
+                    onBrightness = { applied = -2f; applyBrightness() },
                 )
             }
         }
@@ -120,6 +121,15 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun applyBrightness() {
+        // 밝기 버튼으로 손수 정했으면 그 값이 먼저다(자동·야간 상한보다 앞선다).
+        val manual = settings.manualBrightness
+        if (manual >= 0) {
+            val m = Math.pow(manual / 100.0, 2.2).toFloat().coerceAtLeast(0.004f)
+            if (abs(m - applied) < 0.002f) return
+            applied = m
+            window.attributes = window.attributes.apply { screenBrightness = m }
+            return
+        }
         // 센서가 없는 기기는 시스템 밝기를 따르고, 새벽에만 낮춘다.
         var b = if (smoothed < 0) -1f else smoothed
         // 설정의 %는 폰 밝기 막대 기준(눈에 보이는 밝기)이다. 창 밝기 값은 실제 빛의 양이라

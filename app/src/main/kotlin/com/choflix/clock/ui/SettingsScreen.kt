@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.choflix.clock.ui
 
 import android.content.Intent
@@ -5,6 +7,7 @@ import android.net.Uri
 import android.os.PowerManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Slider
 import androidx.compose.foundation.layout.size
@@ -123,8 +126,6 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
 
             Section("숫자 글꼴")
             FontPicker(settings)
-            var heavy by remember { mutableStateOf(settings.heavyClock) }
-            Toggle("큰 시각만 아주 굵게", heavy) { heavy = it; settings.heavyClock = it }
 
             Section("시간대별 자동 밝기")
             DimmerSection(settings)
@@ -395,7 +396,9 @@ private fun ColorPicker(settings: Settings) {
 @Composable
 private fun FontPicker(settings: Settings) {
     var current by remember { mutableStateOf(DigitFont.of(settings.font)) }
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    var clockW by remember { mutableStateOf(settings.clockWeight) }
+    var infoW by remember { mutableStateOf(settings.infoWeight) }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         DigitFont.entries.forEach { f ->
             val selected = f == current
             Column(
@@ -406,8 +409,36 @@ private fun FontPicker(settings: Settings) {
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("10:30", style = f.style(30.sp, Color.White))
+                Text(
+                    "10:30 -4°", color = Color.White, fontSize = 30.sp, fontFamily = f.family,
+                    fontWeight = FontWeight(f.nearest(clockW)),
+                )
                 Text(f.label, color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
+            }
+        }
+    }
+    WeightPicker("시계 숫자 굵기", current, clockW) { clockW = it; settings.clockWeight = it }
+    WeightPicker("날짜·기온·습도 굵기", current, infoW) { infoW = it; settings.infoWeight = it }
+}
+
+/** 고른 글꼴에 있는 굵기만 보여 준다(Bebas·Anton 은 한 가지뿐). */
+@Composable
+private fun WeightPicker(title: String, font: DigitFont, value: Int, onPick: (Int) -> Unit) {
+    val shown = font.nearest(value)
+    Text(title, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        font.weights.forEach { w ->
+            val selected = w == shown
+            Column(
+                Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) Color(0xFF3D8BFF) else Color(0xFF1E2A40))
+                    .clickable { onPick(w) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("88", color = Color.White, fontSize = 24.sp, fontFamily = font.family, fontWeight = FontWeight(w))
+                Text(WeightNames[w] ?: "$w", color = Color.White.copy(alpha = 0.85f), fontSize = 11.sp)
             }
         }
     }

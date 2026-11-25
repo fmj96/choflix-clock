@@ -4,9 +4,11 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,42 +23,45 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.BatteryStd
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.layout
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import com.choflix.clock.data.BatteryInfo
 import com.choflix.clock.data.HomeState
 import com.choflix.clock.data.Settings
 import com.choflix.clock.data.Updater
-import androidx.compose.foundation.shape.CircleShape
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
 import java.time.format.TextStyle as DateTextStyle
@@ -64,13 +69,20 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 /**
- * LED 탁상시계 모양.
- *  왼쪽: 날짜·요일 / 날씨 그림 + 바깥 기온 / INDOOR 실내 기온·습도
- *  오른쪽: 윗줄 AM/PM·와이파이·배터리, 그 아래 큰 시각
- * 글자·아이콘은 모두 설정한 한 가지 색(기본 흰색). 경고만 빨강.
+ * 플립 시계 배치(시안 D).
+ *  왼쪽: 바깥 온도(큰 카드) / 실내 온도 / 습도
+ *  오른쪽 윗줄: 날짜 · 가운데 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) · 와이파이·배터리
+ *  오른쪽 아래: 시 카드(왼쪽 위 AM/PM) | 분 카드 — 숫자는 카드에 꽉 맞춰 늘린다.
+ * 화면 크기는 시안(1000×450)을 기준으로 한 단위 u 로 비례해 잡는다.
  */
 @Composable
-fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, onOpenSettings: () -> Unit) {
+fun ClockScreen(
+    settings: Settings,
+    night: Boolean,
+    onOpenDevices: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onBrightness: () -> Unit,
+) {
     var now by remember { mutableStateOf(LocalDateTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -86,164 +98,239 @@ fun ClockScreen(settings: Settings, night: Boolean, onOpenDevices: () -> Unit, o
     val update by Updater.available.collectAsState()
 
     val font = DigitFont.of(settings.font)
-    // 야간 자동 밝기 구간에는 (설정에 따라) 눈부심 적은 엠버로.
     val main = if (night && settings.dimAmber) NightAmber else Color(settings.color)
-    val soft = main.copy(alpha = 0.55f)
+    // 카드는 밤에 더 어둡게 — 넓은 회색 면이 어두운 방에서 밝게 떠 보이지 않게.
+    val card = if (night) Color(0xFF151515) else Color(0xFF2A2A2A)
+    val button = if (night) Color(0xFF202020) else Color(0xFF3A3A3A)
+    var showBrightness by remember { mutableStateOf(false) }
 
-    // 번인 방지: 1분마다 시계 전체를 반지름 16dp 원 위의 다음 자리로 옮긴다(8자리 순환).
-    var step by remember { mutableStateOf(0) }
+    // 번인 방지: 1분마다 화면 전체를 반지름 16dp 원 위의 다음 자리로 옮긴다(8자리 순환).
+    var step by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { while (true) { delay(60_000); step = (step + 1) % 8 } }
     val dx by animateDpAsState(SHIFTS[step].first, tween(3000), label = "dx")
     val dy by animateDpAsState(SHIFTS[step].second, tween(3000), label = "dy")
 
-    BoxWithConstraints(
-        Modifier
-            .fillMaxSize()
-            .background(
-                if (night) Brush.linearGradient(listOf(Color.Black, Color.Black))
-                else Brush.linearGradient(listOf(Color(0xFF0E1A2E), Color(0xFF02040A)))
-            ),
-    ) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         val d = LocalDensity.current
-        val h = maxHeight - 20.dp
+        val u = minOf(maxWidth / 1000f, maxHeight / 450f)
         fun Dp.sp(): TextUnit = with(d) { toSp() }
 
         Row(
             Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-                .offset(dx, dy),
-            verticalAlignment = Alignment.CenterVertically,
+                .offset(dx, dy)
+                .padding(start = u * 20, end = u * 24, top = u * 16, bottom = u * 18),
+            horizontalArrangement = Arrangement.spacedBy(u * 12),
         ) {
-            // ── 왼쪽: 날짜·요일 / 날씨 그림 + 바깥 기온 / 실내 기온·습도 ──
-            BoxWithConstraints(Modifier.weight(0.38f).fillMaxHeight()) {
-                val leftW = maxWidth
-                // 모든 크기는 '높이 상한'과 '칸 폭에 들어가는 크기' 중 작은 쪽. 글자 폭은 글꼴별 em.
-                val date = "%d.%02d".format(now.monthValue, now.dayOfMonth)
-                val dateSize = minOf(h * 0.19f, leftW / (font.em(date) + 1.9f))
-                val outside = weather?.currentC?.roundToInt()?.toString() ?: "--"
-                // 날씨 그림은 작게, 바깥 기온은 크게.
-                val iconSize = minOf(h * 0.22f, leftW * 0.28f)
-                val outSize = minOf(h * 0.40f, (leftW - iconSize - 8.dp) / (font.em(outside) + 0.45f))
-                val inTemp = indoor?.temperatureC?.let { "%.1f".format(Locale.US, it) } ?: "--.-"
-                val inHum = indoor?.humidity?.toString() ?: "--"
-                val inSize = minOf(h * 0.24f, (leftW - h * 0.06f - 8.dp) / (font.em(inTemp) + font.em(inHum) + 1.1f))
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(date, style = font.style(dateSize.sp(), main), maxLines = 1)
-                        Spacer(Modifier.width(dateSize * 0.3f))
-                        Text(
-                            now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.US).uppercase(),
-                            color = main, fontSize = (dateSize * 0.72f).sp(), fontWeight = FontWeight.Bold, maxLines = 1,
-                        )
+            // ── 왼쪽: 바깥 온도 / 실내 온도 / 습도 ──
+            Column(Modifier.width(u * 226).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 8)) {
+                Box(Modifier.fillMaxWidth().weight(2.2f).clip(RoundedCornerShape(u * 20)).background(card)) {
+                    Label("바깥 온도", main, (u * 17).sp(), Modifier.padding(start = u * 12, top = u * 12))
+                    Box(Modifier.align(Alignment.TopEnd).padding(top = u * 8, end = u * 10).size(u * 44)) {
+                        weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main) }
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
-                            weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main) }
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Reading(outside, "°C", main, outSize, font, d, unitScale = 0.2f)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "INDOOR", color = soft, fontSize = (h * 0.035f).sp(), fontWeight = FontWeight.Bold,
-                            maxLines = 1, modifier = Modifier.vertical().padding(end = 6.dp),
-                        )
-                        Reading(inTemp, "°C", main, inSize, font, d)
-                        Spacer(Modifier.width(inSize * 0.25f))
-                        Reading(inHum, "%", main, inSize, font, d)
-                    }
+                    FitText(
+                        weather?.currentC?.roundToInt()?.toString() ?: "--", font, settings.infoWeight, main,
+                        Modifier.padding(start = u * 14, end = u * 46, top = u * 60, bottom = u * 14).fillMaxSize(),
+                        stretch = true,
+                    )
+                    Text(
+                        "°C", color = main, fontSize = (u * 30).sp(), fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(top = u * 56, end = u * 12),
+                    )
                 }
+                SmallCard("실내 온도", indoor?.temperatureC?.let { "%.1f".format(Locale.US, it) } ?: "--.-", "°C",
+                    font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
+                SmallCard("습도", indoor?.humidity?.toString() ?: "--", "%",
+                    font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
             }
 
-            // 가운데 세로줄.
-            Box(Modifier.padding(horizontal = 10.dp).width(2.dp).fillMaxHeight(0.9f).background(soft))
-
-            // ── 오른쪽: 윗줄(AM/PM · 와이파이 · 배터리)과 큰 시각 ──
-            Column(Modifier.weight(0.62f).fillMaxHeight()) {
-                Row(
-                    // 오른쪽 끝은 모서리의 전구·톱니바퀴 자리(48dp 두 개)라 비워 둔다.
-                    Modifier.fillMaxWidth().height(h * 0.12f).padding(end = 100.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (!settings.use24h) {
-                        Text(
-                            if (now.hour < 12) "AM" else "PM", color = main,
-                            fontSize = (h * 0.075f).sp(), fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Icon(
-                        if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
-                        tint = if (online) main else WarnRed, modifier = Modifier.size(h * 0.06f),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    BatteryBadge(battery, main, WarnRed, h * 0.06f, d)
-                }
-                BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    // 폭과 높이 중 먼저 닿는 쪽에 맞춘다.
-                    val bigSize = minOf(maxHeight, maxWidth / font.timeEm(settings.heavyClock))
-                    val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
-                    val hh = if (settings.use24h) "%02d".format(hour) else hour.toString()
-                    // 폭이 먼저 닿아 위아래가 남는다 — 남는 높이만큼 세로로 늘린다(최대 1.7배). 사용자 요청.
-                    val stretch = (maxHeight * 0.94f / (bigSize * font.digitHeight)).coerceIn(1f, 1.7f)
-                    // 콜론은 깜빡이지 않는다(사용자 요청).
+            // ── 오른쪽: 윗줄과 플립 카드 ──
+            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 10)) {
+                Box(Modifier.fillMaxWidth().height(u * 46)) {
                     Text(
-                        "$hh:%02d".format(now.minute), style = font.timeStyle(bigSize.sp(), main, settings.heavyClock), maxLines = 1, softWrap = false,
-                        modifier = Modifier.graphicsLayer { scaleY = stretch },
+                        "${now.monthValue}월 ${now.dayOfMonth}일 " +
+                            now.dayOfWeek.getDisplayName(DateTextStyle.FULL, Locale.KOREAN),
+                        color = main, fontSize = (u * 32).sp(), fontFamily = font.family,
+                        fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
+                        modifier = Modifier.align(Alignment.CenterStart),
                     )
+                    Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(u * 10)) {
+                        SquareButton(Icons.Outlined.Lightbulb, "기기", main, button, u, onOpenDevices)
+                        SquareButton(Icons.Outlined.LightMode, "밝기", main, button, u) { showBrightness = true }
+                        Box {
+                            SquareButton(Icons.Outlined.Settings, "설정", main, button, u, onOpenSettings)
+                            // 새 버전이 있으면 빨간 점.
+                            if (update != null) {
+                                Box(Modifier.align(Alignment.TopEnd).padding(u * 4).size(u * 10).background(WarnRed, CircleShape))
+                            }
+                        }
+                    }
+                    Row(
+                        Modifier.align(Alignment.CenterEnd),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(u * 14),
+                    ) {
+                        Icon(
+                            if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
+                            tint = if (online) main else WarnRed, modifier = Modifier.size(u * 24),
+                        )
+                        BatteryBadge(battery, main, WarnRed, u * 26, d)
+                    }
+                }
+                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
+                    val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
+                    FlipCard(
+                        "%02d".format(hour), if (settings.use24h) null else if (now.hour < 12) "AM" else "PM",
+                        font, settings.clockWeight, main, card, u, d, Modifier.weight(1f),
+                    )
+                    FlipCard("%02d".format(now.minute), null, font, settings.clockWeight, main, card, u, d, Modifier.weight(1f))
                 }
             }
         }
 
-        // 야간 '추가로 어둡게' — 화면 밝기 최저보다 더 어둡게 검은 막을 덧씌운다. 모서리 버튼은 그 위라 그대로 눌린다.
+        // 야간 '추가로 어둡게' — 화면 밝기 최저보다 더 어둡게 검은 막을 덧씌운다.
         if (night && settings.dimOverlayPercent > 0) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = settings.dimOverlayPercent / 100f)))
         }
 
-        // 오른쪽 위 모서리: 전구(기기 켜기/끄기)와 톱니바퀴(설정). 화면 아무 데나 스쳐도
-        // 열리지 않게 이 둘만 버튼으로 둔다. 번인 방지 이동도 같이 받는다.
-        Row(Modifier.align(Alignment.TopEnd).padding(4.dp).offset(dx, dy)) {
-            IconButton(onClick = onOpenDevices, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Outlined.Lightbulb, "기기", tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp))
-            }
-            IconButton(onClick = onOpenSettings, modifier = Modifier.size(48.dp)) {
-                Box {
-                    Icon(Icons.Outlined.Settings, "설정", tint = main.copy(alpha = 0.45f), modifier = Modifier.size(26.dp))
-                    // 새 버전이 있으면 빨간 점.
-                    if (update != null) {
-                        Box(Modifier.align(Alignment.TopEnd).size(8.dp).background(WarnRed, CircleShape))
-                    }
-                }
-            }
+        if (showBrightness) {
+            BrightnessPanel(settings, main, u, d, onChange = onBrightness, onClose = { showBrightness = false })
         }
     }
 }
 
-/** 숫자 + 작은 단위(°C, %). */
 @Composable
-private fun Reading(
-    value: String, unit: String, color: Color, size: Dp, font: DigitFont, d: androidx.compose.ui.unit.Density,
-    unitScale: Float = 0.32f,
+private fun Label(text: String, color: Color, size: TextUnit, modifier: Modifier) {
+    Text(text, color = color.copy(alpha = 0.6f), fontSize = size, maxLines = 1, modifier = modifier)
+}
+
+/** 실내 온도·습도 카드: 제목은 왼쪽 위, 숫자는 가운데(비율 유지). */
+@Composable
+private fun SmallCard(
+    title: String, value: String, unit: String, font: DigitFont, weight: Int, color: Color, card: Color,
+    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
 ) {
-    Row(verticalAlignment = Alignment.Top) {
-        Text(
-            value, maxLines = 1, softWrap = false,
-            style = font.style(with(d) { size.toSp() }, color),
+    Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
+        Label(title, color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
+        FitText(
+            value, font, weight, color,
+            Modifier.padding(start = u * 10, end = u * 10, top = u * 30, bottom = u * 10).fillMaxSize(),
+            suffix = unit,
         )
-        Text(unit, color = color, fontSize = with(d) { (size * unitScale).toSp() }, fontWeight = FontWeight.Bold)
     }
 }
 
-/** 사진의 알람 종 자리에 배터리. 충전 제어가 어긋나거나 과열이면 빨갛게. */
+/** 플립 카드 하나: 숫자는 카드 안쪽 상자에 꽉 맞춰 늘리고, 가운데에 가로 갈라진 선. */
 @Composable
-private fun BatteryBadge(
-    b: com.choflix.clock.data.BatteryInfo, color: Color, warn: Color, size: Dp, d: androidx.compose.ui.unit.Density,
+private fun FlipCard(
+    digits: String, corner: String?, font: DigitFont, weight: Int, color: Color, card: Color,
+    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
 ) {
+    Box(modifier.fillMaxHeight().clip(RoundedCornerShape(u * 26)).background(card)) {
+        FitText(
+            digits, font, weight, color,
+            Modifier.padding(start = u * 30, end = u * 30, top = u * 46, bottom = u * 30).fillMaxSize(),
+            stretch = true,
+        )
+        Box(Modifier.align(Alignment.Center).fillMaxWidth().height(u * 4).background(Color.Black))
+        if (corner != null) {
+            Text(
+                corner, color = color.copy(alpha = 0.75f), fontSize = with(d) { (u * 24).toSp() },
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = u * 14, top = u * 10),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SquareButton(icon: ImageVector, label: String, tint: Color, bg: Color, u: Dp, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(width = u * 60, height = u * 44)
+            .clip(RoundedCornerShape(u * 12))
+            .background(bg)
+            .clickable(onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, label, tint = tint, modifier = Modifier.size(u * 26))
+    }
+}
+
+/**
+ * 밝기 버튼: 막대로 바로 조절한다(폰 밝기 막대와 같은 눈금). '자동'을 누르면 다시 조도 센서를 따른다.
+ * 손대지 않고 6초가 지나거나 바깥을 누르면 닫힌다.
+ */
+@Composable
+private fun BrightnessPanel(
+    settings: Settings, color: Color, u: Dp, d: androidx.compose.ui.unit.Density,
+    onChange: () -> Unit, onClose: () -> Unit,
+) {
+    var value by remember { mutableFloatStateOf(settings.manualBrightness.takeIf { it >= 0 }?.toFloat() ?: 50f) }
+    var auto by remember { mutableStateOf(settings.manualBrightness < 0) }
+    var touched by remember { mutableIntStateOf(0) }
+    LaunchedEffect(touched) { delay(6000); onClose() }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier
+                .width(u * 620)
+                .clip(RoundedCornerShape(u * 24))
+                .background(Color(0xFF2A2A2A))
+                // 판 안을 누를 때는 닫히지 않게.
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { touched++ }
+                .padding(horizontal = u * 28, vertical = u * 20),
+            verticalArrangement = Arrangement.spacedBy(u * 10),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.LightMode, null, tint = color, modifier = Modifier.size(u * 30))
+                Spacer(Modifier.width(u * 12))
+                Text(
+                    if (auto) "밝기 · 자동" else "밝기 ${value.roundToInt()}%",
+                    color = color, fontSize = with(d) { (u * 28).toSp() }, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(u * 12))
+                        .background(if (auto) Color(0xFF4D8DFF) else Color(0xFF3A3A3A))
+                        .clickable {
+                            touched++
+                            auto = !auto
+                            settings.manualBrightness = if (auto) -1 else value.roundToInt()
+                            onChange()
+                        }
+                        .padding(horizontal = u * 18, vertical = u * 10),
+                ) {
+                    Text("자동", color = Color.White, fontSize = with(d) { (u * 22).toSp() }, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Slider(
+                value = value,
+                onValueChange = {
+                    touched++
+                    value = it
+                    auto = false
+                    settings.manualBrightness = it.roundToInt()
+                    onChange()
+                },
+                valueRange = 0f..100f,
+                colors = SliderDefaults.colors(thumbColor = color, activeTrackColor = color),
+            )
+        }
+    }
+}
+
+/** 배터리 잔량. 충전 제어가 어긋나거나 과열이면 빨갛게. */
+@Composable
+private fun BatteryBadge(b: BatteryInfo, color: Color, warn: Color, size: Dp, d: androidx.compose.ui.unit.Density) {
     if (b.percent < 0) return
     val c = if (b.mismatch || b.overheat) warn else color
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -253,7 +340,7 @@ private fun BatteryBadge(
         )
         Text(
             "${b.percent}%" + (if (b.overheat) " ${b.tempC.roundToInt()}°" else ""),
-            color = c, fontSize = with(d) { (size * 0.7f).toSp() },
+            color = c, fontSize = with(d) { (size * 0.8f).toSp() }, fontWeight = FontWeight.SemiBold,
         )
     }
 }
@@ -277,14 +364,6 @@ private fun rememberOnline(): Boolean {
     }
     return online
 }
-
-/** 글자를 왼쪽으로 90° 눕힌다. rotate 와 달리 차지하는 자리도 가로·세로를 바꿔 잡는다. */
-private fun Modifier.vertical() = this
-    .layout { measurable, constraints ->
-        val p = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
-        layout(p.height, p.width) { p.place(-(p.width - p.height) / 2, (p.width - p.height) / 2) }
-    }
-    .rotate(-90f)
 
 private val SHIFTS = listOf(
     0.dp to 0.dp, 16.dp to 0.dp, 11.dp to 11.dp, 0.dp to 16.dp,
