@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -34,6 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.choflix.clock.data.Air
 import com.choflix.clock.data.DayForecast
 import com.choflix.clock.data.HomeState
 import com.choflix.clock.data.Settings
@@ -49,6 +51,7 @@ import kotlin.math.roundToInt
 fun WeekScreen(settings: Settings, onClose: () -> Unit) {
     val weather by HomeState.weather.collectAsState()
     val place by HomeState.place.collectAsState()
+    val airDaily by HomeState.airDaily.collectAsState()
     val color = Color(settings.color)
     val font = DigitFont.of(settings.font)
 
@@ -94,14 +97,14 @@ fun WeekScreen(settings: Settings, onClose: () -> Unit) {
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val today = LocalDate.now()
             days.take(7).forEach { d ->
-                DayCard(d, today, font, settings.infoWeight, color, Modifier.weight(1f).fillMaxHeight())
+                DayCard(d, airDaily[d.date], today, font, settings.infoWeight, color, Modifier.weight(1f).fillMaxHeight())
             }
         }
     }
 }
 
 @Composable
-private fun DayCard(d: DayForecast, today: LocalDate, font: DigitFont, weight: Int, color: Color, modifier: Modifier) {
+private fun DayCard(d: DayForecast, air: Air?, today: LocalDate, font: DigitFont, weight: Int, color: Color, modifier: Modifier) {
     val isToday = d.date == today
     Column(
         modifier
@@ -135,6 +138,14 @@ private fun DayCard(d: DayForecast, today: LocalDate, font: DigitFont, weight: I
             d.rainChance?.let { "☂ $it%" } ?: "", fontSize = 15.sp,
             color = if ((d.rainChance ?: 0) >= 50) Color(0xFF6AD0FF) else color.copy(alpha = 0.6f),
         )
+        // 미세먼지 예보(약 5일) — 없는 날은 같은 높이만 비워 둔다.
+        Row(Modifier.height(30.dp), verticalAlignment = Alignment.CenterVertically) {
+            air?.grade?.let { g ->
+                Icon(dustFace(g), null, tint = DustColors[g], modifier = Modifier.size(28.dp))
+                Spacer(Modifier.width(4.dp))
+                Text(DustNames[g], color = color, fontSize = if (g == 3) 13.sp else 16.sp, maxLines = 1)
+            }
+        }
     }
 }
 

@@ -49,6 +49,8 @@ data class Air(val pm10: Double, val pm25: Double) {
         }
 }
 
+data class AirReport(val current: Air?, val daily: Map<LocalDate, Air>)
+
 data class Place(val name: String, val lat: Double, val lon: Double)
 
 /**
@@ -67,15 +69,39 @@ object WeatherRepository {
         runCatching { openMeteo(lat, lon) }.getOrNull() ?: runCatching { metNo(lat, lon) }.getOrNull()
     }
 
-    /** open-meteo 대기질(키 없음). */
-    suspend fun fetchAir(lat: Double, lon: Double): Air? = withContext(Dispatchers.IO) {
+    /**
+     * open-meteo 대기질(키 없음): 지금 값과 날짜별 예보(약 5일).
+     * 날짜별 값은 그날 시간별 예보의 평균 — 환경부 등급도 24시간 평균 기준이다.
+     */
+    suspend fun fetchAir(lat: Double, lon: Double): AirReport? = withContext(Dispatchers.IO) {
         runCatching {
-            val cur = getJson(
-                "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon&current=pm10,pm2_5"
-            )?.optJSONObject("current") ?: return@runCatching null
-            val pm10 = cur.optDouble("pm10")
-            val pm25 = cur.optDouble("pm2_5")
-            if (pm10.isNaN() || pm25.isNaN()) null else Air(pm10, pm25)
+            val json = getJson(
+                "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=$lat&longitude=$lon" +
+                    "&current=pm10,pm2_5&hourly=pm10,pm2_5&forecast_days=7&timezone=auto"
+            ) ?: return@runCatching null
+            val current = json.optJSONObject("current")?.let { cur ->
+                val pm10 = cur.optDouble("pm10")
+                val pm25 = cur.optDouble("pm2_5")
+                if (pm10.isNaN() || pm25.isNaN()) null else Air(pm10, pm25)
+            }
+            val daily = mutableMapOf<LocalDate, MutableList<Air>>()
+            json.optJSONObject("hourly")?.let { h ->
+                val times = h.optJSONArray("time")
+                val a = h.optJSONArray("pm10")
+                val b = h.optJSONArray("pm2_5")
+                if (times != null && a != null && b != null) {
+                    for (i in 0 until times.length()) {
+                        if (a.isNull(i) || b.isNull(i)) continue
+                        val day = runCatching { LocalDate.parse(times.optString(i).take(10)) }.getOrNull() ?: continue
+                        daily.getOrPut(day) { mutableListOf() }.add(Air(a.optDouble(i), b.optDouble(i)))
+                    }
+                }
+            }
+            AirReport(
+                current,
+                // 반나절도 안 되는 날(예보 끝자락)은 평균이 치우친다 — 뺀다.
+                daily.filterValues { it.size >= 12 }.mapValues { (_, l) -> Air(l.map { it.pm10 }.average(), l.map { it.pm25 }.average()) },
+            )
         }.getOrNull()
     }
 

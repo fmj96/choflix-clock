@@ -140,7 +140,10 @@ class BatteryPlugMonitorService : Service() {
             HomeState.place.value = settings.place
         }
         // 미세먼지는 덤 — 못 받아도 날씨 재시도를 앞당기지 않는다.
-        WeatherRepository.fetchAir(lat, lon)?.let { HomeState.air.value = it }
+        WeatherRepository.fetchAir(lat, lon)?.let { r ->
+            r.current?.let { HomeState.air.value = it }
+            HomeState.airDaily.value = r.daily
+        }
         val w = WeatherRepository.fetch(lat, lon) ?: return false
         HomeState.weather.value = w
         return true

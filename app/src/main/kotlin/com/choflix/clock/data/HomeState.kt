@@ -22,6 +22,8 @@ object HomeState {
     val weather = MutableStateFlow<Weather?>(null)
     val place = MutableStateFlow("")
     val air = MutableStateFlow<Air?>(null)
+    /** 날짜별 미세먼지 예보(주간 날씨 화면). */
+    val airDaily = MutableStateFlow<Map<java.time.LocalDate, Air>>(emptyMap())
     val indoor = MutableStateFlow<Indoor?>(null)
     val battery = MutableStateFlow(BatteryInfo())
     /** 마지막 Tuya 오류(설정 화면에 보여준다). 성공하면 지운다. */

@@ -276,12 +276,12 @@ private fun DustCard(
     }
 }
 
-private val DustNames = listOf("좋음", "보통", "나쁨", "매우나쁨")
+internal val DustNames = listOf("좋음", "보통", "나쁨", "매우나쁨")
 
 /** 표정 색은 글자 색 설정과 상관없이 고정 — 좋음 파랑, 보통 초록, 나쁨·매우나쁨 빨강. */
-private val DustColors = listOf(Color(0xFF4D8DFF), Color(0xFF5BE37D), WarnRed, WarnRed)
+internal val DustColors = listOf(Color(0xFF4D8DFF), Color(0xFF5BE37D), WarnRed, WarnRed)
 
-private fun dustFace(grade: Int): ImageVector = when (grade) {
+internal fun dustFace(grade: Int): ImageVector = when (grade) {
     0 -> Icons.Outlined.SentimentVerySatisfied
     1 -> Icons.Outlined.SentimentSatisfied
     2 -> Icons.Outlined.SentimentDissatisfied
