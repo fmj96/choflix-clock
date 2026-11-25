@@ -182,9 +182,9 @@ fun ClockScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            "%04d-%02d-%02d (%s)".format(
+                            "%04d-%02d-%02d %s".format(
                                 now.year, now.monthValue, now.dayOfMonth,
-                                now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.KOREAN),
+                                now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
                             ),
                             color = main, fontSize = (u * 28).sp(), fontFamily = font.family,
                             fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
