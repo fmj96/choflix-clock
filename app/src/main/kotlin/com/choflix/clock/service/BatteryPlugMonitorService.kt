@@ -10,6 +10,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
+import android.net.Network
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
@@ -55,6 +57,11 @@ class BatteryPlugMonitorService : Service() {
     private var client: TuyaCloudClient? = null
     private var clientKey = ""
 
+    // 네트워크가 새로 잡히면(와이파이 재연결, 맥 인터넷 공유 등) 날씨·실내를 바로 다시 받는다.
+    private val netCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) { HomeState.refresh.value++ }
+    }
+
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = onBattery(intent)
     }
@@ -77,7 +84,9 @@ class BatteryPlugMonitorService : Service() {
         // 실내 온·습도는 5분마다. Tuya 무료(체험판) API 는 한 달 호출 수에 한도가 있다 — 2분이면
         // 센서만으로 한 달 2만 번이 넘어 한도에 닿을 수 있다. 실내 기온은 그렇게 빨리 변하지 않는다.
         scope.launch { loop(5 * 60_000L) { pollIndoor() } }
-        scope.launch { loop(30 * 60_000L) { pollWeather() } }
+        // 날씨는 30분마다 — 못 받았으면(연결 직후 등) 1분 뒤 다시.
+        scope.launch { loop(30 * 60_000L, retryMs = 60_000L) { pollWeather() } }
+        runCatching { getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(netCallback) }
         // 새 버전 확인은 6시간마다 — 있으면 시계의 톱니바퀴에 빨간 점이 뜬다.
         scope.launch { while (true) { runCatching { Updater.check() }; delay(6 * 3600_000L) } }
     }
@@ -86,16 +95,20 @@ class BatteryPlugMonitorService : Service() {
 
     override fun onDestroy() {
         unregisterReceiver(batteryReceiver)
+        runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(netCallback) }
         scope.cancel()
         super.onDestroy()
     }
 
-    /** 주기마다, 또는 설정이 바뀌었다는 신호([HomeState.refresh])가 오면 바로 한 번 더. */
-    private suspend fun loop(periodMs: Long, block: suspend () -> Unit) {
+    /**
+     * 주기마다, 또는 설정이 바뀌었다는 신호([HomeState.refresh])가 오면 바로 한 번 더.
+     * block 이 false 를 돌려주면(못 받음) [retryMs] 뒤에 다시.
+     */
+    private suspend fun loop(periodMs: Long, retryMs: Long = periodMs, block: suspend () -> Any?) {
         while (true) {
-            runCatching { block() }.onFailure { Log.w(TAG, "poll", it) }
+            val ok = runCatching { block() != false }.onFailure { Log.w(TAG, "poll", it) }.getOrDefault(false)
             val seen = HomeState.refresh.value
-            withTimeoutOrNull(periodMs) { HomeState.refresh.first { it != seen } }
+            withTimeoutOrNull(if (ok) periodMs else retryMs) { HomeState.refresh.first { it != seen } }
         }
     }
 
@@ -116,17 +129,19 @@ class BatteryPlugMonitorService : Service() {
             .onFailure { HomeState.tuyaError.value = "온습도: ${it.message}" }
     }
 
-    private suspend fun pollWeather() {
+    private suspend fun pollWeather(): Boolean {
         var lat = settings.lat
         var lon = settings.lon
         if (lat == null || lon == null) {
-            val p = WeatherRepository.locateByIp() ?: return
+            val p = WeatherRepository.locateByIp() ?: return false
             lat = p.lat; lon = p.lon
             HomeState.place.value = p.name
         } else {
             HomeState.place.value = settings.place
         }
-        WeatherRepository.fetch(lat, lon)?.let { HomeState.weather.value = it }
+        val w = WeatherRepository.fetch(lat, lon) ?: return false
+        HomeState.weather.value = w
+        return true
     }
 
     private fun onBattery(intent: Intent) {
