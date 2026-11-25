@@ -180,10 +180,11 @@ fun ClockScreen(
                     val hi = weather?.maxC?.roundToInt()
                     if (lo != null && hi != null) {
                         Text(
-                            "최저 $lo° / 최고 $hi°", color = main.copy(alpha = 0.7f), fontSize = (u * 14).sp(),
+                            // 크기는 "날씨" 제목과 같게, 색은 현재 온도와 같게.
+                            "최저 $lo° / 최고 $hi°", color = main, fontSize = (u * 17).sp(),
                             fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(start = u * 12, top = u * 38, end = u * 76),
+                            modifier = Modifier.padding(start = u * 12, top = u * 38, end = u * 74),
                         )
                     }
                 }
