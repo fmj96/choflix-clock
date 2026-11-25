@@ -64,6 +64,10 @@ import com.choflix.clock.data.TuyaRegion
 import com.choflix.clock.data.Updater
 import com.choflix.clock.data.WeatherRepository
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.res.painterResource
+import com.choflix.clock.R
 
 @Composable
 fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
@@ -113,8 +117,22 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 .padding(horizontal = 32.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            // 머리: 로고(앱 아이콘) · 앱 이름 · 버전
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("설정", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f))
+                Box(
+                    Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF1B2A44)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // 아이콘 그림은 108 칸 가운데 60 칸만 쓴다 — 크게 그려 상자로 잘라 낸다.
+                    Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.requiredSize(80.dp))
+                }
+                Spacer(Modifier.width(14.dp))
+                Text("Choflix Clock", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "v${BuildConfig.VERSION_NAME}", fontSize = 16.sp, color = Color.White.copy(alpha = 0.6f),
+                    modifier = Modifier.weight(1f),
+                )
                 Button(onClick = onClose) { Text("시계로") }
             }
 
