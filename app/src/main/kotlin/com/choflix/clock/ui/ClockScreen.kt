@@ -225,7 +225,13 @@ fun ClockScreen(
                             )
                             // 카드 제목(날씨·미세먼지)과 같은 크기·색.
                             if (todayNote.isNotEmpty()) {
-                                Label(todayNote, main, (u * 15).sp(), Modifier.padding(start = u * 10))
+                                // 기념일은 빨강으로 고정. 글자 색을 빨강 계열로 골랐으면 그보다 옅은 빨강으로 구분되게.
+                                val reddish = main.red > 0.8f && main.green < 0.5f && main.blue < 0.5f
+                                Text(
+                                    todayNote, color = if (reddish) Color(0xFFFFA8A8) else Color(0xFFFF4D4D),
+                                    fontSize = (u * 15).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(start = u * 10),
+                                )
                             }
                         }
                     }
