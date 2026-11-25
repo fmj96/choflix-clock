@@ -228,8 +228,9 @@ fun ClockScreen(
                                 // 기념일은 빨강으로 고정. 글자 색을 빨강 계열로 골랐으면 그보다 옅은 빨강으로 구분되게.
                                 Text(
                                     todayNote, color = distinctFrom(main, Color(0xFFFF4D4D), Color(0xFFFFA8A8)),
-                                    fontSize = (u * 15).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(start = u * 10),
+                                    fontSize = (u * 15).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
+                                    // 날짜가 먼저 자리를 잡고 남은 폭만 쓴다 — 길면 "…" 로 줄여 상자를 넘지 않게.
+                                    modifier = Modifier.weight(1f, fill = false).padding(start = u * 10),
                                 )
                             }
                         }
