@@ -174,35 +174,38 @@ fun ClockScreen(
 
             // ── 오른쪽: 윗줄과 플립 카드 ──
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 10)) {
-                Box(Modifier.fillMaxWidth().height(u * 46)) {
-                    Text(
-                        "${now.monthValue}월 ${now.dayOfMonth}일 " +
-                            now.dayOfWeek.getDisplayName(DateTextStyle.FULL, Locale.KOREAN),
-                        color = main, fontSize = (u * 32).sp(), fontFamily = font.family,
-                        fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
-                        modifier = Modifier.align(Alignment.CenterStart),
-                    )
-                    // 오른쪽 끝: 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) 다음에 와이파이·배터리.
-                    Row(
-                        Modifier.align(Alignment.CenterEnd),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(u * 10),
-                    ) {
-                        SquareButton(Icons.Outlined.Lightbulb, "기기", main, button, u, onOpenDevices)
-                        SquareButton(Icons.Outlined.LightMode, "밝기", main, button, u) { showBrightness = true }
-                        Box {
-                            SquareButton(Icons.Outlined.Settings, "설정", main, button, u, onOpenSettings)
-                            // 새 버전이 있으면 빨간 점.
-                            if (update != null) {
-                                Box(Modifier.align(Alignment.TopEnd).padding(u * 4).size(u * 10).background(WarnRed, CircleShape))
-                            }
-                        }
-                        Spacer(Modifier.width(u * 8))
-                        Icon(
-                            if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
-                            tint = if (online) main else WarnRed, modifier = Modifier.size(u * 24),
+                // 윗줄도 아래 플립 카드처럼 반씩 나눈다: 왼쪽 반(시 카드 위) 가운데에 날짜·요일.
+                Row(Modifier.fillMaxWidth().height(u * 46), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
+                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        Text(
+                            "${now.monthValue}월 ${now.dayOfMonth}일 " +
+                                now.dayOfWeek.getDisplayName(DateTextStyle.FULL, Locale.KOREAN),
+                            color = main, fontSize = (u * 32).sp(), fontFamily = font.family,
+                            fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
                         )
-                        BatteryBadge(battery, main, WarnRed, u * 26, d)
+                    }
+                    // 오른쪽 끝: 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) 다음에 와이파이·배터리.
+                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterEnd) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(u * 10),
+                        ) {
+                            SquareButton(Icons.Outlined.Lightbulb, "기기", main, button, u, onOpenDevices)
+                            SquareButton(Icons.Outlined.LightMode, "밝기", main, button, u) { showBrightness = true }
+                            Box {
+                                SquareButton(Icons.Outlined.Settings, "설정", main, button, u, onOpenSettings)
+                                // 새 버전이 있으면 빨간 점.
+                                if (update != null) {
+                                    Box(Modifier.align(Alignment.TopEnd).padding(u * 4).size(u * 10).background(WarnRed, CircleShape))
+                                }
+                            }
+                            Spacer(Modifier.width(u * 8))
+                            Icon(
+                                if (online) Icons.Filled.Wifi else Icons.Filled.WifiOff, null,
+                                tint = if (online) main else WarnRed, modifier = Modifier.size(u * 24),
+                            )
+                            BatteryBadge(battery, main, WarnRed, u * 26, d)
+                    }
                     }
                 }
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
