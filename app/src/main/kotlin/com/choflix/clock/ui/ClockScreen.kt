@@ -33,6 +33,11 @@ import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SentimentVeryDissatisfied
+import androidx.compose.material.icons.outlined.SentimentDissatisfied
+import androidx.compose.material.icons.outlined.SentimentNeutral
+import androidx.compose.material.icons.outlined.SentimentSatisfied
+import androidx.compose.material.icons.outlined.SentimentVerySatisfied
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -145,7 +150,8 @@ fun ClockScreen(
                 SmallCard("실내 온도", indoor?.temperatureC?.let { "%.1f".format(Locale.US, it) } ?: "--.-", "°C",
                     font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
                 SmallCard("실내 습도", indoor?.humidity?.toString() ?: "--", "%",
-                    font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
+                    font, settings.infoWeight, main, card, u, d, Modifier.weight(1f),
+                    corner = indoor?.humidity?.let(::humidityFace))
             }
 
             // ── 오른쪽: 윗줄과 플립 카드 ──
@@ -212,10 +218,13 @@ private fun Label(text: String, color: Color, size: TextUnit, modifier: Modifier
 @Composable
 private fun SmallCard(
     title: String, value: String, unit: String, font: DigitFont, weight: Int, color: Color, card: Color,
-    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
+    u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier, corner: ImageVector? = null,
 ) {
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
         Label(title, color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
+        corner?.let {
+            Icon(it, null, tint = color, modifier = Modifier.align(Alignment.TopEnd).padding(top = u * 6, end = u * 8).size(u * 24))
+        }
         FitText(
             value, font, weight, color,
             Modifier.padding(start = u * 10, end = u * 10, top = u * 30, bottom = u * 10).fillMaxSize(),
@@ -372,3 +381,12 @@ private val SHIFTS = listOf(
     0.dp to 0.dp, 16.dp to 0.dp, 11.dp to 11.dp, 0.dp to 16.dp,
     (-11).dp to 11.dp, (-16).dp to 0.dp, (-11).dp to (-11).dp, 0.dp to (-16).dp,
 )
+
+/** 실내 습도 표정 — 40~60% 가 가장 쾌적, 멀어질수록 찡그린다. */
+private fun humidityFace(h: Int): ImageVector = when (h) {
+    in 40..60 -> Icons.Outlined.SentimentVerySatisfied
+    in 35..65 -> Icons.Outlined.SentimentSatisfied
+    in 30..70 -> Icons.Outlined.SentimentNeutral
+    in 20..80 -> Icons.Outlined.SentimentDissatisfied
+    else -> Icons.Outlined.SentimentVeryDissatisfied
+}
