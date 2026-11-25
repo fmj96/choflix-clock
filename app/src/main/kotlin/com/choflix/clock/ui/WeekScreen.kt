@@ -141,7 +141,7 @@ private fun DayCard(d: DayForecast, air: Air?, today: LocalDate, font: DigitFont
         // 미세먼지 예보(약 5일) — 없는 날은 같은 높이만 비워 둔다.
         Row(Modifier.height(30.dp), verticalAlignment = Alignment.CenterVertically) {
             air?.grade?.let { g ->
-                Icon(dustFace(g), null, tint = DustColors[g], modifier = Modifier.size(28.dp))
+                Icon(dustFace(g), null, tint = dustColor(g, color), modifier = Modifier.size(28.dp))
                 Spacer(Modifier.width(4.dp))
                 Text(DustNames[g], color = color, fontSize = if (g == 3) 13.sp else 16.sp, maxLines = 1)
             }

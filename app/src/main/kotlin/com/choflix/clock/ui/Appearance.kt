@@ -80,5 +80,16 @@ val ColorPresets: List<Pair<String, Long>> = listOf(
 /** 야간 자동 밝기 구간의 엠버 톤. */
 val NightAmber = Color(0xFFD98A3C)
 
+/**
+ * 뜻이 있는 고정 색(미세먼지 등급, 기념일)이 설정한 글자 색과 비슷하면 같은 계열의 옅은 색으로 바꿔
+ * 구분되게 한다 — 예: 글자 색을 파랑으로 골라도 '좋음' 표정은 옅은 파랑으로 따로 보인다.
+ */
+fun distinctFrom(main: Color, fixed: Color, pale: Color): Color {
+    val dr = fixed.red - main.red
+    val dg = fixed.green - main.green
+    val db = fixed.blue - main.blue
+    return if (kotlin.math.sqrt(dr * dr + dg * dg + db * db) < 0.35f) pale else fixed
+}
+
 /** 경고(와이파이 끊김, 플러그 응답 없음, 새 버전 점)는 색 설정과 상관없이 빨강. */
 val WarnRed = Color(0xFFFF5A5A)

@@ -226,9 +226,8 @@ fun ClockScreen(
                             // 카드 제목(날씨·미세먼지)과 같은 크기·색.
                             if (todayNote.isNotEmpty()) {
                                 // 기념일은 빨강으로 고정. 글자 색을 빨강 계열로 골랐으면 그보다 옅은 빨강으로 구분되게.
-                                val reddish = main.red > 0.8f && main.green < 0.5f && main.blue < 0.5f
                                 Text(
-                                    todayNote, color = if (reddish) Color(0xFFFFA8A8) else Color(0xFFFF4D4D),
+                                    todayNote, color = distinctFrom(main, Color(0xFFFF4D4D), Color(0xFFFFA8A8)),
                                     fontSize = (u * 15).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.padding(start = u * 10),
                                 )
@@ -309,7 +308,7 @@ private fun DustCard(
         // 표정은 카드 높이를 거의 채우게 오른쪽에 크게.
         air?.grade?.let { g ->
             Icon(
-                dustFace(g), null, tint = DustColors[g],
+                dustFace(g), null, tint = dustColor(g, color),
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = u * 6).size(u * 84),
             )
         }
@@ -319,7 +318,11 @@ private fun DustCard(
 internal val DustNames = listOf("좋음", "보통", "나쁨", "매우나쁨")
 
 /** 표정 색은 글자 색 설정과 상관없이 고정 — 좋음 파랑, 보통 초록, 나쁨·매우나쁨 빨강. */
-internal val DustColors = listOf(Color(0xFF4D8DFF), Color(0xFF5BE37D), WarnRed, WarnRed)
+private val DustColors = listOf(Color(0xFF4D8DFF), Color(0xFF5BE37D), WarnRed, WarnRed)
+private val DustPale = listOf(Color(0xFFB3D1FF), Color(0xFFB5F5C8), Color(0xFFFFB3B3), Color(0xFFFFB3B3))
+
+/** 등급 색 — 글자 색과 비슷하면 옅은 색으로. */
+internal fun dustColor(grade: Int, main: Color) = distinctFrom(main, DustColors[grade], DustPale[grade])
 
 internal fun dustFace(grade: Int): ImageVector = when (grade) {
     0 -> Icons.Outlined.SentimentVerySatisfied
