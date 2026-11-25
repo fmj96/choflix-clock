@@ -24,6 +24,7 @@ import com.choflix.clock.service.BatteryPlugMonitorService
 import com.choflix.clock.ui.ClockScreen
 import com.choflix.clock.ui.DevicesScreen
 import com.choflix.clock.ui.SettingsScreen
+import com.choflix.clock.ui.CalendarScreen
 import com.choflix.clock.ui.IndoorScreen
 import com.choflix.clock.ui.WeekScreen
 import kotlinx.coroutines.delay
@@ -53,6 +54,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     private var showDevices by mutableStateOf(false)
     private var showWeek by mutableStateOf(false)
     private var showIndoor by mutableStateOf(false)
+    private var showCalendar by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,8 +84,8 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
         }
 
         setContent {
-            BackHandler(enabled = showSettings || showDevices || showWeek || showIndoor) {
-                showSettings = false; showDevices = false; showWeek = false; showIndoor = false
+            BackHandler(enabled = showSettings || showDevices || showWeek || showIndoor || showCalendar) {
+                showSettings = false; showDevices = false; showWeek = false; showIndoor = false; showCalendar = false
             }
             when {
                 showSettings -> SettingsScreen(settings, onClose = {
@@ -95,11 +97,13 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
                 showDevices -> DevicesScreen(settings, onClose = { showDevices = false })
                 showWeek -> WeekScreen(settings, onClose = { showWeek = false })
                 showIndoor -> IndoorScreen(settings, onClose = { showIndoor = false })
+                showCalendar -> CalendarScreen(settings, onClose = { showCalendar = false; hideSystemBars() })
                 else -> ClockScreen(
                     settings, night = night,
                     onOpenDevices = { showDevices = true },
                     onOpenWeather = { showWeek = true },
                     onOpenIndoor = { showIndoor = true },
+                    onOpenCalendar = { showCalendar = true },
                     onOpenSettings = { showSettings = true },
                     onBrightness = { applied = -2f; applyBrightness() },
                 )

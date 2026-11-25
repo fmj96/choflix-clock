@@ -93,6 +93,7 @@ fun ClockScreen(
     onOpenDevices: () -> Unit,
     onOpenWeather: () -> Unit,
     onOpenIndoor: () -> Unit,
+    onOpenCalendar: () -> Unit,
     onOpenSettings: () -> Unit,
     onBrightness: () -> Unit,
 ) {
@@ -186,7 +187,8 @@ fun ClockScreen(
                     // 날짜 상자: 폭은 시 카드와 같고 높이·모양·색은 버튼과 같게.
                     Box(
                         Modifier.weight(1f).align(Alignment.CenterVertically).height(u * 44)
-                            .clip(RoundedCornerShape(u * 12)).background(card),
+                            .clip(RoundedCornerShape(u * 12)).background(card)
+                            .clickable(onClickLabel = "달력", onClick = onOpenCalendar),
                         contentAlignment = Alignment.Center,
                     ) {
                         // 상자에 꽉 맞춰(비율 유지) 크게 — 위아래 여백은 조금만.
