@@ -22,6 +22,18 @@ data class Weather(
     /** 지금 내리는 비·눈의 양(mm). 코드가 '맑음' 이어도 이게 있으면 비가 이긴다. */
     val precipitation: Double = 0.0,
     val cloudPercent: Int = 0,
+    /** 오늘부터 7일 예보(open-meteo 에서 받았을 때만 — met.no 대체일 땐 비어 있다). */
+    val daily: List<DayForecast> = emptyList(),
+)
+
+/** 하루 예보. */
+data class DayForecast(
+    val date: LocalDate,
+    val code: Int,
+    val minC: Double?,
+    val maxC: Double?,
+    /** 비·눈 올 확률(%). 모르면 null. */
+    val rainChance: Int?,
 )
 
 /** 지금 미세먼지(㎍/㎥). */
@@ -71,7 +83,8 @@ object WeatherRepository {
         val json = getJson(
             "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
                 "&current=temperature_2m,weather_code,is_day,precipitation,cloud_cover" +
-                "&daily=temperature_2m_min,temperature_2m_max&forecast_days=1&timezone=auto"
+                "&daily=temperature_2m_min,temperature_2m_max,weather_code,precipitation_probability_max" +
+                "&forecast_days=7&timezone=auto"
         ) ?: return null
         val cur = json.optJSONObject("current") ?: return null
         if (!cur.has("temperature_2m")) return null
@@ -84,7 +97,23 @@ object WeatherRepository {
             isDay = cur.optInt("is_day", 1) == 1,
             precipitation = cur.optDouble("precipitation", 0.0).let { if (it.isNaN()) 0.0 else it },
             cloudPercent = cur.optInt("cloud_cover", 0),
+            daily = daily?.let(::parseDaily).orEmpty(),
         )
+    }
+
+    private fun parseDaily(d: JSONObject): List<DayForecast> {
+        val days = d.optJSONArray("time") ?: return emptyList()
+        fun num(key: String, i: Int) = d.optJSONArray(key)?.let { if (it.isNull(i)) null else it.optDouble(i) }?.takeIf { !it.isNaN() }
+        return (0 until days.length()).mapNotNull { i ->
+            val date = runCatching { LocalDate.parse(days.optString(i)) }.getOrNull() ?: return@mapNotNull null
+            DayForecast(
+                date = date,
+                code = num("weather_code", i)?.toInt() ?: -1,
+                minC = num("temperature_2m_min", i),
+                maxC = num("temperature_2m_max", i),
+                rainChance = num("precipitation_probability_max", i)?.toInt(),
+            )
+        }
     }
 
     /**

@@ -24,6 +24,7 @@ import com.choflix.clock.service.BatteryPlugMonitorService
 import com.choflix.clock.ui.ClockScreen
 import com.choflix.clock.ui.DevicesScreen
 import com.choflix.clock.ui.SettingsScreen
+import com.choflix.clock.ui.WeekScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalTime
@@ -49,6 +50,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     private var night by mutableStateOf(false)
     private var showSettings by mutableStateOf(false)
     private var showDevices by mutableStateOf(false)
+    private var showWeek by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,7 +80,9 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
         }
 
         setContent {
-            BackHandler(enabled = showSettings || showDevices) { showSettings = false; showDevices = false }
+            BackHandler(enabled = showSettings || showDevices || showWeek) {
+                showSettings = false; showDevices = false; showWeek = false
+            }
             when {
                 showSettings -> SettingsScreen(settings, onClose = {
                     showSettings = false
@@ -87,9 +91,11 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
                     night = isNight(); applied = -2f; applyBrightness()
                 })
                 showDevices -> DevicesScreen(settings, onClose = { showDevices = false })
+                showWeek -> WeekScreen(settings, onClose = { showWeek = false })
                 else -> ClockScreen(
                     settings, night = night,
                     onOpenDevices = { showDevices = true },
+                    onOpenWeather = { showWeek = true },
                     onOpenSettings = { showSettings = true },
                     onBrightness = { applied = -2f; applyBrightness() },
                 )

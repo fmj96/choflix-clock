@@ -81,7 +81,7 @@ import kotlin.math.roundToInt
 
 /**
  * 플립 시계 배치(시안 D).
- *  왼쪽: 실외 온도(큰 카드, 아래에 최저/최고) / 미세먼지 / 실내 온도·습도
+ *  왼쪽: 날씨(큰 카드 — 지금 기온, 아래에 최저/최고, 누르면 주간 날씨) / 미세먼지 / 실내 온도·습도
  *  오른쪽 윗줄: 날짜 · (오른쪽 끝) 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) · 와이파이·배터리
  *  오른쪽 아래: 시 카드(왼쪽 위 AM/PM) | 분 카드 — 숫자는 카드에 꽉 맞춰 늘린다.
  * 화면 크기는 시안(1000×450)을 기준으로 한 단위 u 로 비례해 잡는다.
@@ -91,6 +91,7 @@ fun ClockScreen(
     settings: Settings,
     night: Boolean,
     onOpenDevices: () -> Unit,
+    onOpenWeather: () -> Unit,
     onOpenSettings: () -> Unit,
     onBrightness: () -> Unit,
 ) {
@@ -133,10 +134,14 @@ fun ClockScreen(
                 .padding(start = u * 20, end = u * 24, top = u * 16, bottom = u * 18),
             horizontalArrangement = Arrangement.spacedBy(u * 12),
         ) {
-            // ── 왼쪽: 실외 온도 / 미세먼지 / 실내 온도·습도 ──
+            // ── 왼쪽: 날씨 / 미세먼지 / 실내 온도·습도 ──
             Column(Modifier.width(u * 226).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 8)) {
-                Box(Modifier.fillMaxWidth().weight(2.2f).clip(RoundedCornerShape(u * 20)).background(card)) {
-                    Label("실외 온도", main, (u * 17).sp(), Modifier.padding(start = u * 12, top = u * 12))
+                // 누르면 주간 날씨.
+                Box(
+                    Modifier.fillMaxWidth().weight(2.2f).clip(RoundedCornerShape(u * 20)).background(card)
+                        .clickable(onClickLabel = "주간 날씨", onClick = onOpenWeather),
+                ) {
+                    Label("날씨", main, (u * 17).sp(), Modifier.padding(start = u * 12, top = u * 12))
                     Box(Modifier.align(Alignment.TopEnd).padding(top = u * 6, end = u * 8).size(u * 66)) {
                         weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main) }
                     }
