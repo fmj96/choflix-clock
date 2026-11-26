@@ -127,10 +127,10 @@ fun ClockScreen(
     }
     val todayNote = (holidays.filter { it.date == day }.map { it.name } + events.filter { it.occursOn(day) }.map { it.title })
         .joinToString(" · ")
-    // 오늘 것이 없으면 다가올 내 기념일 하나 — "26/12/22 아현수술".
+    // 오늘 것이 없으면 다가올 내 기념일 하나 — "12/22 아현수술"(연도는 뺀다).
     val upcoming = remember(events, day) {
         events.mapNotNull { e -> e.nextFrom(day.plusDays(1))?.let { it to e.title } }.minByOrNull { it.first }
-            ?.let { (dt, title) -> "%02d/%02d/%02d %s".format(dt.year % 100, dt.monthValue, dt.dayOfMonth, title) }
+            ?.let { (dt, title) -> "%02d/%02d %s".format(dt.monthValue, dt.dayOfMonth, title) }
     }
 
     val font = DigitFont.of(settings.font)
