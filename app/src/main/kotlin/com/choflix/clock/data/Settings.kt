@@ -2,6 +2,8 @@ package com.choflix.clock.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import java.security.MessageDigest
+import java.security.SecureRandom
 
 /**
  * 앱 설정. 기기 안(SharedPreferences)에만 둔다 — Tuya 키처럼 남에게 보이면 안 되는 값도
@@ -119,6 +121,28 @@ class Settings(context: Context) {
 
     val tuyaConfigured: Boolean
         get() = tuyaAccessId.isNotEmpty() && tuyaSecret.isNotEmpty()
+
+    // ── 설정 잠금 ──
+    /** 설정 화면 비밀번호. 숫자 그대로가 아니라 소금(salt)을 친 해시만 둔다. 비어 있으면 잠금 꺼짐. */
+    val settingsLocked: Boolean
+        get() = !p.getString("pinHash", null).isNullOrEmpty()
+
+    fun setPin(pin: String?) {
+        if (pin.isNullOrEmpty()) {
+            p.edit().remove("pinHash").remove("pinSalt").apply()
+            return
+        }
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
+        p.edit().putString("pinSalt", salt).putString("pinHash", hash(salt, pin)).apply()
+    }
+
+    fun checkPin(pin: String): Boolean {
+        val h = p.getString("pinHash", null) ?: return true
+        return hash(p.getString("pinSalt", "") ?: "", pin) == h
+    }
+
+    private fun hash(salt: String, pin: String): String =
+        MessageDigest.getInstance("SHA-256").digest("$salt:$pin".toByteArray()).joinToString("") { "%02x".format(it) }
 }
 
 /** Tuya 개발자 플랫폼 데이터센터. 프로젝트를 만들 때 고른 곳과 같아야 한다. */

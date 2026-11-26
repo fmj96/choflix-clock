@@ -63,7 +63,11 @@ import com.choflix.clock.data.TuyaCloudClient
 import com.choflix.clock.data.TuyaRegion
 import com.choflix.clock.data.Updater
 import com.choflix.clock.data.WeatherRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.res.painterResource
@@ -98,6 +102,20 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
         var high by remember { mutableStateOf(settings.highPercent.toString()) }
         var maxTemp by remember { mutableStateOf(settings.maxTempC.toString()) }
 
+        var locked by remember { mutableStateOf(settings.settingsLocked) }
+        // 새 비밀번호 정하기: 0 = 창 없음, 1 = 처음 입력, 2 = 한 번 더(첫 입력은 firstPin).
+        var pinStep by remember { mutableStateOf(0) }
+        var firstPin by remember { mutableStateOf("") }
+
+        // 잠가 두었으면 설정을 열어 둔 채 자리를 떠도 남이 못 만지게 2분 뒤 시계로 돌아간다.
+        var touchedAt by remember { mutableStateOf(System.currentTimeMillis()) }
+        if (locked && pinStep == 0) {
+            LaunchedEffect(touchedAt) {
+                delay(LOCKED_IDLE_MS)
+                onClose()
+            }
+        }
+
         fun saveTuya() {
             settings.tuyaRegion = region
             settings.tuyaAccessId = accessId
@@ -112,6 +130,14 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
             Modifier
                 .fillMaxSize()
                 .background(Color(0xFF0B1424))
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial)
+                            touchedAt = System.currentTimeMillis()
+                        }
+                    }
+                }
                 .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 32.dp, vertical = 20.dp),
@@ -222,6 +248,34 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 }
                 NumberField("과열 차단 °C", maxTemp, Modifier.weight(1f)) {
                     maxTemp = it; it.toIntOrNull()?.takeIf { v -> v in 30..50 }?.let { v -> settings.maxTempC = v }
+                }
+            }
+
+            Section("설정 잠금")
+            Toggle("비밀번호로 잠그기 (아무나 설정을 바꾸지 못하게)", locked) { on ->
+                if (on) { firstPin = ""; pinStep = 1 } else { settings.setPin(null); locked = false }
+            }
+            if (locked) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = { firstPin = ""; pinStep = 1 }) { Text("비밀번호 바꾸기") }
+                    Text(
+                        "잊어버리면 앱 정보 → 저장공간 → 데이터 지우기로 풀립니다(다른 설정도 지워짐).",
+                        color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp, modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+            if (pinStep != 0) {
+                PinDialog(
+                    if (pinStep == 1) "새 비밀번호" else "비밀번호 확인",
+                    if (pinStep == 1) "설정 버튼을 누를 때 물어봅니다" else "한 번 더 넣어 주세요",
+                    onDismiss = { pinStep = 0 },
+                ) { pin ->
+                    when {
+                        pin.length < PIN_MIN -> "${PIN_MIN}자리 이상 넣어 주세요"
+                        pinStep == 1 -> { firstPin = pin; pinStep = 2; null }
+                        pin != firstPin -> { pinStep = 1; "처음 넣은 것과 다릅니다 — 다시 정해 주세요" }
+                        else -> { settings.setPin(pin); locked = true; pinStep = 0; null }
+                    }
                 }
             }
 
@@ -516,3 +570,5 @@ private fun HourStepper(hour: Int, onChange: (Int) -> Unit) {
             contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { Text("+") }
     }
 }
+
+private const val LOCKED_IDLE_MS = 120_000L
