@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SentimentVeryDissatisfied
 import androidx.compose.material.icons.outlined.SentimentDissatisfied
@@ -88,7 +89,7 @@ import kotlin.math.roundToInt
 /**
  * 플립 시계 배치(시안 D).
  *  왼쪽: 날씨(큰 카드 — 지금 기온, 그 아래 최고/최저, 누르면 주간 날씨) / 미세먼지 / 실내 온도·습도
- *  오른쪽 윗줄: 날짜 · (오른쪽 끝) 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) · 와이파이·배터리
+ *  오른쪽 윗줄: 날짜 · 버튼(전구=기기, 해=밝기, 음표=음악, 톱니바퀴=설정) · 와이파이·배터리
  *  오른쪽 아래: 시 카드(왼쪽 위 AM/PM) | 분 카드 — 숫자는 카드에 꽉 맞춰 늘린다.
  * 화면 크기는 시안(1000×450)을 기준으로 한 단위 u 로 비례해 잡는다.
  */
@@ -100,6 +101,7 @@ fun ClockScreen(
     onOpenWeather: () -> Unit,
     onOpenIndoor: () -> Unit,
     onOpenCalendar: () -> Unit,
+    onOpenMusic: () -> Unit,
     onOpenSettings: () -> Unit,
     onBrightness: () -> Unit,
 ) {
@@ -251,10 +253,12 @@ fun ClockScreen(
                         Row(
                             Modifier.fillMaxWidth().height(u * 44),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(u * 10),
+                            // 버튼 넷 + 와이파이·배터리가 분 카드 폭에 들어가게 간격은 8.
+                            horizontalArrangement = Arrangement.spacedBy(u * 8),
                         ) {
                             SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onOpenDevices)
                             SquareButton(Icons.Outlined.LightMode, "밝기", main, card, u) { showBrightness = true }
+                            SquareButton(Icons.Outlined.MusicNote, "음악", main, card, u, onOpenMusic)
                             Box {
                                 SquareButton(Icons.Outlined.Settings, "설정", main, card, u, onOpenSettings)
                                 // 새 버전이 있으면 빨간 점.
@@ -453,7 +457,7 @@ private fun FlipHalf(
 private fun SquareButton(icon: ImageVector, label: String, tint: Color, bg: Color, u: Dp, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(width = u * 60, height = u * 44)
+            .size(width = u * 52, height = u * 44)
             .clip(RoundedCornerShape(u * 12))
             .background(bg)
             .clickable(onClickLabel = label, onClick = onClick),

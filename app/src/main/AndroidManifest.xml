@@ -40,6 +40,16 @@
                 android:value="Keeps a docked phone's battery between two levels by switching a smart plug." />
         </service>
 
+        <!-- 음악: 애플뮤직의 '지금 재생 중'을 읽으려면 알림 접근을 허용받은 리스너가 있어야 한다. -->
+        <service
+            android:name=".service.MediaListener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".data.InstallReceiver"
             android:exported="false" />

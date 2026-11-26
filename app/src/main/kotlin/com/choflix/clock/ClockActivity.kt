@@ -23,6 +23,7 @@ import com.choflix.clock.data.Settings
 import com.choflix.clock.service.BatteryPlugMonitorService
 import com.choflix.clock.ui.ClockScreen
 import com.choflix.clock.ui.PinDialog
+import com.choflix.clock.ui.MusicScreen
 import com.choflix.clock.ui.DevicesScreen
 import com.choflix.clock.ui.SettingsScreen
 import com.choflix.clock.ui.CalendarScreen
@@ -56,6 +57,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     private var showWeek by mutableStateOf(false)
     private var showIndoor by mutableStateOf(false)
     private var showCalendar by mutableStateOf(false)
+    private var showMusic by mutableStateOf(false)
     /** 설정이 잠겨 있을 때 톱니바퀴를 누르면 비밀번호부터 묻는다. */
     private var askPin by mutableStateOf(false)
 
@@ -87,8 +89,9 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
         }
 
         setContent {
-            BackHandler(enabled = showSettings || showDevices || showWeek || showIndoor || showCalendar) {
+            BackHandler(enabled = showSettings || showDevices || showWeek || showIndoor || showCalendar || showMusic) {
                 showSettings = false; showDevices = false; showWeek = false; showIndoor = false; showCalendar = false
+                showMusic = false
             }
             when {
                 showSettings -> SettingsScreen(settings, onClose = {
@@ -101,6 +104,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
                 showWeek -> WeekScreen(settings, onClose = { showWeek = false })
                 showIndoor -> IndoorScreen(settings, onClose = { showIndoor = false })
                 showCalendar -> CalendarScreen(settings, onClose = { showCalendar = false; hideSystemBars() })
+                showMusic -> MusicScreen(settings, onClose = { showMusic = false })
                 else -> {
                     ClockScreen(
                         settings, night = night,
@@ -108,6 +112,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
                         onOpenWeather = { showWeek = true },
                         onOpenIndoor = { showIndoor = true },
                         onOpenCalendar = { showCalendar = true },
+                        onOpenMusic = { showMusic = true },
                         onOpenSettings = { if (settings.settingsLocked) askPin = true else showSettings = true },
                         onBrightness = { applied = -2f; applyBrightness() },
                     )
