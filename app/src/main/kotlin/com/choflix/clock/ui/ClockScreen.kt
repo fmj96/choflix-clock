@@ -68,7 +68,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -318,31 +317,30 @@ private fun Label(text: String, color: Color, size: TextUnit, modifier: Modifier
     Text(text, color = color.copy(alpha = 0.6f), fontSize = size, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
 }
 
-/** 미세먼지 카드: 왼쪽에 표정, 오른쪽에 등급(좋음·보통·나쁨·매우나쁨). */
+/** 미세먼지 카드: 표정과 등급(좋음·보통·나쁨·매우나쁨)을 나란히 가운데에. */
 @Composable
 private fun DustCard(
     air: Air?, font: DigitFont, weight: Int, color: Color, card: Color,
     u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
 ) {
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
-        // 제목은 오른쪽 위, 표정은 왼쪽, 등급 글자는 오른쪽 정렬.
+        // 제목은 오른쪽 위. 표정(왼쪽)과 등급 글자를 한 덩어리로 묶어 카드 가운데에.
         Label("미세먼지", color, with(d) { (u * 15).toSp() }, Modifier.align(Alignment.TopEnd).padding(end = u * 10, top = u * 8))
         Row(
-            Modifier.fillMaxSize().padding(start = u * 92, end = u * 12, top = u * 24, bottom = u * 4),
+            Modifier.fillMaxSize().padding(horizontal = u * 8),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
         ) {
             val g = air?.grade
+            // 표정은 카드 높이를 거의 채우게 크게.
+            if (g != null) {
+                Icon(dustFace(g), null, tint = dustColor(g, color), modifier = Modifier.size(u * 84))
+                Spacer(Modifier.width(u * 12))
+            }
             Text(
                 g?.let { DustNames[it] } ?: "--", color = color, fontSize = with(d) { (u * if (g == 3) 28 else 36).toSp() },
                 fontFamily = font.family, fontWeight = FontWeight(font.nearest(weight)), maxLines = 1,
-                textAlign = TextAlign.End, modifier = Modifier.weight(1f),
-            )
-        }
-        // 표정은 카드 높이를 거의 채우게 왼쪽에 크게.
-        air?.grade?.let { g ->
-            Icon(
-                dustFace(g), null, tint = dustColor(g, color),
-                modifier = Modifier.align(Alignment.CenterStart).padding(start = u * 6).size(u * 84),
+                modifier = Modifier.padding(top = u * 8),
             )
         }
     }
