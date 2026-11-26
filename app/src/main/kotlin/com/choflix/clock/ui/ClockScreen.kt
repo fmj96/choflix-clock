@@ -68,6 +68,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -166,8 +167,9 @@ fun ClockScreen(
                     Modifier.fillMaxWidth().weight(2.2f).clip(RoundedCornerShape(u * 20)).background(card)
                         .clickable(onClickLabel = "주간 날씨", onClick = onOpenWeather),
                 ) {
-                    Label("날씨", main, (u * 17).sp(), Modifier.padding(start = u * 12, top = u * 12))
-                    Box(Modifier.align(Alignment.TopEnd).padding(top = u * 6, end = u * 8).size(u * 66)) {
+                    // 제목은 오른쪽 위, 날씨 그림은 왼쪽 위.
+                    Label("날씨", main, (u * 17).sp(), Modifier.align(Alignment.TopEnd).padding(end = u * 12, top = u * 12))
+                    Box(Modifier.align(Alignment.TopStart).padding(top = u * 6, start = u * 8).size(u * 66)) {
                         weather?.let { WeatherIcon(it, Modifier.fillMaxSize(), main) }
                     }
                     FitText(
@@ -316,30 +318,31 @@ private fun Label(text: String, color: Color, size: TextUnit, modifier: Modifier
     Text(text, color = color.copy(alpha = 0.6f), fontSize = size, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = modifier)
 }
 
-/** 미세먼지 카드: 등급(좋음·보통·나쁨·매우나쁨)과 오른쪽에 표정. */
+/** 미세먼지 카드: 왼쪽에 표정, 오른쪽에 등급(좋음·보통·나쁨·매우나쁨). */
 @Composable
 private fun DustCard(
     air: Air?, font: DigitFont, weight: Int, color: Color, card: Color,
     u: Dp, d: androidx.compose.ui.unit.Density, modifier: Modifier,
 ) {
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
-        Label("미세먼지", color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
+        // 제목은 오른쪽 위, 표정은 왼쪽, 등급 글자는 오른쪽 정렬.
+        Label("미세먼지", color, with(d) { (u * 15).toSp() }, Modifier.align(Alignment.TopEnd).padding(end = u * 10, top = u * 8))
         Row(
-            Modifier.fillMaxSize().padding(start = u * 12, end = u * 92, top = u * 24, bottom = u * 4),
+            Modifier.fillMaxSize().padding(start = u * 92, end = u * 12, top = u * 24, bottom = u * 4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val g = air?.grade
             Text(
                 g?.let { DustNames[it] } ?: "--", color = color, fontSize = with(d) { (u * if (g == 3) 28 else 36).toSp() },
                 fontFamily = font.family, fontWeight = FontWeight(font.nearest(weight)), maxLines = 1,
-                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End, modifier = Modifier.weight(1f),
             )
         }
-        // 표정은 카드 높이를 거의 채우게 오른쪽에 크게.
+        // 표정은 카드 높이를 거의 채우게 왼쪽에 크게.
         air?.grade?.let { g ->
             Icon(
                 dustFace(g), null, tint = dustColor(g, color),
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = u * 6).size(u * 84),
+                modifier = Modifier.align(Alignment.CenterStart).padding(start = u * 6).size(u * 84),
             )
         }
     }
@@ -369,7 +372,7 @@ private fun SmallCard(
     small: Set<Char> = emptySet(), half: Set<Char> = emptySet(),
 ) {
     Box(modifier.fillMaxWidth().clip(RoundedCornerShape(u * 20)).background(card)) {
-        Label(title, color, with(d) { (u * 15).toSp() }, Modifier.padding(start = u * 10, top = u * 8))
+        Label(title, color, with(d) { (u * 15).toSp() }, Modifier.align(Alignment.TopEnd).padding(end = u * 10, top = u * 8))
         FitText(
             value, font, weight, color,
             Modifier.padding(start = u * 10, end = u * 10, top = u * 30, bottom = u * 10).fillMaxSize(),
