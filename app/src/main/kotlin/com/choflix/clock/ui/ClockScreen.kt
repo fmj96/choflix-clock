@@ -65,7 +65,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -85,7 +87,7 @@ import kotlin.math.roundToInt
 
 /**
  * 플립 시계 배치(시안 D).
- *  왼쪽: 날씨(큰 카드 — 지금 기온, 아래에 최저/최고, 누르면 주간 날씨) / 미세먼지 / 실내 온도·습도
+ *  왼쪽: 날씨(큰 카드 — 지금 기온, 그 아래 최고/최저, 누르면 주간 날씨) / 미세먼지 / 실내 온도·습도
  *  오른쪽 윗줄: 날짜 · (오른쪽 끝) 버튼(전구=기기, 해=밝기, 톱니바퀴=설정) · 와이파이·배터리
  *  오른쪽 아래: 시 카드(왼쪽 위 AM/PM) | 분 카드 — 숫자는 카드에 꽉 맞춰 늘린다.
  * 화면 크기는 시안(1000×450)을 기준으로 한 단위 u 로 비례해 잡는다.
@@ -170,8 +172,8 @@ fun ClockScreen(
                     }
                     FitText(
                         weather?.currentC?.roundToInt()?.toString() ?: "--", font, settings.infoWeight, main,
-                        // 숫자 크기는 예전 그대로(위아래 여백 합 118) — 최저/최고가 올라가 빈 곳 가운데쯤에 둔다.
-                        Modifier.padding(start = u * 14, end = u * 14, top = u * 84, bottom = u * 34).fillMaxSize(),
+                        // 숫자 크기는 예전 그대로(위아래 여백 합 118) — 아래에 최고/최저 자리를 남긴다.
+                        Modifier.padding(start = u * 14, end = u * 14, top = u * 72, bottom = u * 46).fillMaxSize(),
                         stretch = true,
                         // 크기는 "-20" 기준으로 고정 — 한 자리일 때 숫자가 옆으로 퍼지지 않게. 빼기는 작게.
                         reference = "-20",
@@ -180,17 +182,25 @@ fun ClockScreen(
                         suffix = "°C",
                         centerOnText = true,
                     )
-                    // "날씨" 바로 아래 작게 왼쪽 정렬: 오늘 최저/최고(오른쪽 날씨 그림과 겹치지 않게 폭을 비워 둔다).
+                    // 현재 기온 아래 가운데: 오늘 최고/최저.
                     val lo = weather?.minC?.roundToInt()
                     val hi = weather?.maxC?.roundToInt()
                     if (lo != null && hi != null) {
-                        Text(
-                            // 크기는 "날씨" 제목과 같게, 색은 현재 온도와 같게.
-                            "최고 $hi°  최저 $lo°", color = main, fontSize = (u * 17).sp(),
-                            fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(start = u * 12, top = u * 38, end = u * 74),
-                        )
+                        val text = "최고 $hi°  최저 $lo°"
+                        val style = TextStyle(fontWeight = FontWeight(font.nearest(settings.infoWeight)))
+                        val measurer = rememberTextMeasurer()
+                        BoxWithConstraints(
+                            Modifier.align(Alignment.BottomCenter).padding(start = u * 12, end = u * 12, bottom = u * 10),
+                        ) {
+                            // 되도록 크게(22) — 길어 폭을 넘으면 들어갈 때까지 줄인다(15까지).
+                            val size = (22 downTo 15).firstOrNull { k ->
+                                measurer.measure(text, style.copy(fontSize = (u * k).sp())).size.width <= constraints.maxWidth
+                            } ?: 15
+                            Text(
+                                text, color = main, fontSize = (u * size).sp(), style = style,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
+                            )
+                        }
                     }
                 }
                 // 누르면 주간 날씨(날마다 미세먼지 예보도 있다).
