@@ -181,7 +181,7 @@ fun ClockScreen(
                     if (lo != null && hi != null) {
                         Text(
                             // 크기는 "날씨" 제목과 같게, 색은 현재 온도와 같게.
-                            "최저 $lo° / 최고 $hi°", color = main, fontSize = (u * 17).sp(),
+                            "최고 $hi°  최저 $lo°", color = main, fontSize = (u * 17).sp(),
                             fontWeight = FontWeight(font.nearest(settings.infoWeight)), maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(start = u * 12, top = u * 38, end = u * 74),
@@ -203,10 +203,10 @@ fun ClockScreen(
             // ── 오른쪽: 윗줄과 플립 카드 ──
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(u * 10)) {
                 // 윗줄도 아래 플립 카드처럼 반씩 나눈다: 왼쪽 반(시 카드 위)은 날짜·요일 상자.
-                Row(Modifier.fillMaxWidth().height(u * 46), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
-                    // 날짜 상자: 폭은 시 카드와 같고 높이·모양·색은 버튼과 같게.
+                Row(Modifier.fillMaxWidth().height(u * 90), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
+                    // 날짜 상자: 폭은 시 카드와 같고 높이는 버튼의 두 배(그만큼 아래 시계 카드가 낮아진다).
                     Box(
-                        Modifier.weight(1f).align(Alignment.CenterVertically).height(u * 44)
+                        Modifier.weight(1f).align(Alignment.CenterVertically).height(u * 88)
                             .clip(RoundedCornerShape(u * 12)).background(card)
                             .clickable(onClickLabel = "달력", onClick = onOpenCalendar),
                         contentAlignment = Alignment.Center,
@@ -224,15 +224,15 @@ fun ClockScreen(
                                     now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
                                 ),
                                 font, settings.infoWeight, main,
-                                Modifier.fillMaxHeight().padding(vertical = u * 7),
+                                Modifier.fillMaxHeight().padding(vertical = u * 13),
                                 half = setOf('/'), wrapWidth = true,
                             )
-                            // 카드 제목(날씨·미세먼지)과 같은 크기·색.
+                            // 상자가 커진 만큼 기념일 글자도 키운다.
                             if (todayNote.isNotEmpty()) {
                                 // 기념일은 빨강으로 고정. 글자 색을 빨강 계열로 골랐으면 그보다 옅은 빨강으로 구분되게.
                                 Text(
                                     todayNote, color = distinctFrom(main, Color(0xFFFF4D4D), Color(0xFFFFA8A8)),
-                                    fontSize = (u * 15).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
+                                    fontSize = (u * 28).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
                                     // 날짜가 먼저 자리를 잡고 남은 폭만 쓴다 — 길면 "…" 로 줄여 상자를 넘지 않게.
                                     modifier = Modifier.weight(1f, fill = false).padding(start = u * 10),
                                 )
