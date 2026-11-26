@@ -211,38 +211,25 @@ fun ClockScreen(
                             .clickable(onClickLabel = "달력", onClick = onOpenCalendar),
                         contentAlignment = Alignment.Center,
                     ) {
-                        // 날짜·요일 바로 옆에 기념일, 둘을 묶어 상자 가운데.
-                        Row(
-                            Modifier.fillMaxSize().padding(horizontal = u * 10),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                        ) {
-                            // 상자에 꽉 맞춰(비율 유지) 크게 — 위아래 여백은 조금만.
-                            FitText(
-                                "%02d/%02d %s".format(
-                                    now.monthValue, now.dayOfMonth,
-                                    now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
-                                ),
-                                font, settings.infoWeight, main,
-                                Modifier.fillMaxHeight().padding(vertical = u * 13),
-                                half = setOf('/'), wrapWidth = true,
-                            )
-                            // 상자가 커진 만큼 기념일 글자도 키운다.
-                            if (todayNote.isNotEmpty()) {
-                                // 기념일은 빨강으로 고정. 글자 색을 빨강 계열로 골랐으면 그보다 옅은 빨강으로 구분되게.
-                                Text(
-                                    todayNote, color = distinctFrom(main, Color(0xFFFF4D4D), Color(0xFFFFA8A8)),
-                                    fontSize = (u * 28).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
-                                    // 날짜가 먼저 자리를 잡고 남은 폭만 쓴다 — 길면 "…" 로 줄여 상자를 넘지 않게.
-                                    modifier = Modifier.weight(1f, fill = false).padding(start = u * 10),
-                                )
-                            }
-                        }
+                        // 상자에 꽉 맞춰(비율 유지) 크게 — 위아래 여백은 조금만. 기념일은 오른쪽 상자로 옮겼다.
+                        FitText(
+                            "%02d/%02d %s".format(
+                                now.monthValue, now.dayOfMonth,
+                                now.dayOfWeek.getDisplayName(DateTextStyle.SHORT, Locale.ENGLISH).uppercase(Locale.ENGLISH),
+                            ),
+                            font, settings.infoWeight, main,
+                            Modifier.fillMaxHeight().padding(horizontal = u * 10, vertical = u * 13),
+                            half = setOf('/'), wrapWidth = true,
+                        )
                     }
-                    // 오른쪽 반(분 카드 위): 버튼은 분 카드 왼쪽 끝에 맞추고, 와이파이·배터리는 오른쪽 끝.
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    // 오른쪽 반(분 카드 위): 위에는 버튼(분 카드 왼쪽 끝에 맞춤)과 와이파이·배터리(오른쪽 끝)를
+                    // 날짜 상자 윗변에 맞춰 두고, 아래에는 분 카드 폭만큼 기념일 상자.
+                    Column(
+                        Modifier.weight(1f).align(Alignment.CenterVertically).height(u * 88),
+                        verticalArrangement = Arrangement.spacedBy(u * 8),
+                    ) {
                         Row(
-                            Modifier.fillMaxSize(),
+                            Modifier.fillMaxWidth().height(u * 44),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(u * 10),
                         ) {
@@ -261,6 +248,22 @@ fun ClockScreen(
                                 tint = if (online) main else WarnRed, modifier = Modifier.size(u * 24),
                             )
                             BatteryBadge(battery, main, WarnRed, u * 26, d)
+                        }
+                        // 오늘 공휴일·기념일. 누르면 달력.
+                        Box(
+                            Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(u * 12)).background(card)
+                                .clickable(onClickLabel = "달력", onClick = onOpenCalendar)
+                                .padding(horizontal = u * 12),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            // 기념일은 빨강으로 고정. 글자 색을 빨강 계열로 골랐으면 그보다 옅은 빨강으로 구분되게.
+                            // 길면 "…" 로 줄여 상자를 넘지 않게.
+                            Text(
+                                todayNote.ifEmpty { "오늘 기념일 없음" },
+                                color = if (todayNote.isEmpty()) main.copy(alpha = 0.35f)
+                                else distinctFrom(main, Color(0xFFFF4D4D), Color(0xFFFFA8A8)),
+                                fontSize = (u * 20).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
+                            )
                         }
                     }
                 }
