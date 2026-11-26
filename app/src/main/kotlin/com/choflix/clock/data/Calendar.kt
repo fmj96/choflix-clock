@@ -59,6 +59,15 @@ data class Event(val id: Long, val date: LocalDate, val title: String, val yearl
     fun occursOn(d: LocalDate): Boolean =
         if (yearly) d.monthValue == date.monthValue && d.dayOfMonth == date.dayOfMonth && d.year >= date.year
         else d == date
+
+    /** [from] 이후(그날 포함) 처음 돌아오는 날. 지나간 한 번짜리면 null. */
+    fun nextFrom(from: LocalDate): LocalDate? {
+        if (!yearly) return date.takeIf { !it.isBefore(from) }
+        if (!date.isBefore(from)) return date
+        // 2/29 는 윤년이 아니면 2/28 로(withYear 가 맞춰 준다).
+        val thisYear = date.withYear(from.year)
+        return if (!thisYear.isBefore(from)) thisYear else date.withYear(from.year + 1)
+    }
 }
 
 /** 일정은 폰 안(events.json)에만 둔다 — 공개 저장소·서버로 보내지 않는다. */

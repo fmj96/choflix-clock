@@ -116,7 +116,7 @@ fun ClockScreen(
     val online = rememberOnline()
     val update by Updater.available.collectAsState()
 
-    // 오늘의 공휴일·일정·기념일 — 날짜 상자 오른쪽에 작게.
+    // 오늘의 공휴일·일정·기념일 — 날짜 상자 옆 기념일 상자에.
     val context = LocalContext.current
     val events by Events.all.collectAsState()
     var holidays by remember { mutableStateOf<List<Holiday>>(emptyList()) }
@@ -127,6 +127,11 @@ fun ClockScreen(
     }
     val todayNote = (holidays.filter { it.date == day }.map { it.name } + events.filter { it.occursOn(day) }.map { it.title })
         .joinToString(" · ")
+    // 오늘 것이 없으면 다가올 내 기념일 하나 — "26/12/22 아현수술".
+    val upcoming = remember(events, day) {
+        events.mapNotNull { e -> e.nextFrom(day.plusDays(1))?.let { it to e.title } }.minByOrNull { it.first }
+            ?.let { (dt, title) -> "%02d/%02d/%02d %s".format(dt.year % 100, dt.monthValue, dt.dayOfMonth, title) }
+    }
 
     val font = DigitFont.of(settings.font)
     val main = if (night && settings.dimAmber) NightAmber else Color(settings.color)
@@ -188,7 +193,11 @@ fun ClockScreen(
                         )
                     }
                 }
-                DustCard(air, font, settings.infoWeight, main, card, u, d, Modifier.weight(1f))
+                // 누르면 주간 날씨(날마다 미세먼지 예보도 있다).
+                DustCard(
+                    air, font, settings.infoWeight, main, card, u, d,
+                    Modifier.weight(1f).clip(RoundedCornerShape(u * 20)).clickable(onClickLabel = "주간 날씨", onClick = onOpenWeather),
+                )
                 // 소수점은 빼고 온도·습도를 한 줄에 — 글자는 칸에 맞춰 줄어든다.
                 SmallCard(
                     "실내 온도 / 습도",
@@ -256,12 +265,15 @@ fun ClockScreen(
                                 .padding(horizontal = u * 12),
                             contentAlignment = Alignment.Center,
                         ) {
-                            // 기념일은 빨강으로 고정. 글자 색을 빨강 계열로 골랐으면 그보다 옅은 빨강으로 구분되게.
-                            // 길면 "…" 로 줄여 상자를 넘지 않게.
+                            // 오늘 기념일은 빨강으로 고정(글자 색이 빨강 계열이면 옅은 빨강). 없으면 다가올 기념일을
+                            // 글자 색으로, 그것도 없으면 흐리게. 길면 "…" 로 줄여 상자를 넘지 않게.
                             Text(
-                                todayNote.ifEmpty { "오늘 기념일 없음" },
-                                color = if (todayNote.isEmpty()) main.copy(alpha = 0.35f)
-                                else distinctFrom(main, Color(0xFFFF4D4D), Color(0xFFFFA8A8)),
+                                todayNote.ifEmpty { upcoming ?: "오늘 기념일 없음" },
+                                color = when {
+                                    todayNote.isNotEmpty() -> distinctFrom(main, Color(0xFFFF4D4D), Color(0xFFFFA8A8))
+                                    upcoming != null -> main
+                                    else -> main.copy(alpha = 0.35f)
+                                },
                                 fontSize = (u * 20).sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false,
                             )
                         }
