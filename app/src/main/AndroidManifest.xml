@@ -17,6 +17,8 @@
     <!-- 안드로이드 11부터 남의 앱은 여기 적어야 보인다 — 없으면 애플뮤직이 '설치 안 됨'으로 보여 스토어로 갔다. -->
     <queries>
         <package android:name="com.apple.android.music" />
+        <!-- 캐스트 버튼: 시스템 UI 의 미디어 출력 창을 부를 수 있는지 본다. -->
+        <package android:name="com.android.systemui" />
     </queries>
 
     <application
