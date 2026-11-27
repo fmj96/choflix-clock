@@ -212,7 +212,7 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
     }
     val pad = h * 0.1f
     Row(
-        modifier.clip(RoundedCornerShape(h * 0.2f)).background(Color(0xFF141414).copy(alpha = 0.72f))
+        modifier.clip(RoundedCornerShape(h * 0.2f)).background(Color(0xFF141414).copy(alpha = 0.5f))
             .padding(horizontal = pad, vertical = pad),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(pad),
