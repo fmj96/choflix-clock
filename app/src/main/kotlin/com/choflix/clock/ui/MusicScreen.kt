@@ -1,5 +1,6 @@
 package com.choflix.clock.ui
 
+import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -82,12 +83,6 @@ fun MusicScreen(settings: Settings, onClose: () -> Unit) {
         }
     }
 
-    fun openAppleMusic() {
-        val i = context.packageManager.getLaunchIntentForPackage(NowPlaying.APPLE_MUSIC)
-            ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=${NowPlaying.APPLE_MUSIC}"))
-        runCatching { context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-    }
-
     Column(
         Modifier
             .fillMaxSize()
@@ -109,7 +104,7 @@ fun MusicScreen(settings: Settings, onClose: () -> Unit) {
                 Text("  · TV로 재생 중", color = color.copy(alpha = 0.6f), fontSize = 16.sp)
             }
             Spacer(Modifier.weight(1f))
-            Chip("애플뮤직 열기", color, ::openAppleMusic)
+            Chip("애플뮤직 열기", color) { openAppleMusic(context) }
         }
 
         if (!access) {
@@ -183,6 +178,85 @@ fun MusicScreen(settings: Settings, onClose: () -> Unit) {
                     }
                     RoundButton(Icons.Filled.VolumeUp, "소리 크게", color, 56.dp) { NowPlaying.volume(true) }
                 }
+            }
+        }
+    }
+}
+
+/** 애플뮤직을 연다. 깔려 있지 않으면 플레이스토어. */
+internal fun openAppleMusic(context: Context) {
+    val i = context.packageManager.getLaunchIntentForPackage(NowPlaying.APPLE_MUSIC)
+        ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=${NowPlaying.APPLE_MUSIC}"))
+    runCatching { context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+}
+
+/**
+ * 시계 화면 아래에 겹쳐 띄우는 음악 막대(음표 버튼으로 열고 닫는다). 밑의 시·분이 비쳐 보이게
+ * 반투명. 크기는 부르는 쪽이 정하고, 안은 그 높이 [h] 에 맞춰 그린다.
+ */
+@Composable
+internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Modifier) {
+    val context = LocalContext.current
+    val track by NowPlaying.track.collectAsState()
+    var access by remember { mutableStateOf(NowPlaying.hasAccess(context)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            access = NowPlaying.hasAccess(context)
+            if (access) NowPlaying.start(context)
+            delay(2000)
+        }
+    }
+    val pad = h * 0.1f
+    Row(
+        modifier.clip(RoundedCornerShape(h * 0.2f)).background(Color(0xFF141414).copy(alpha = 0.72f))
+            .padding(horizontal = pad, vertical = pad),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(pad),
+    ) {
+        val t = track
+        val textSp = with(androidx.compose.ui.platform.LocalDensity.current) { (h * 0.24f).toSp() }
+        val subSp = with(androidx.compose.ui.platform.LocalDensity.current) { (h * 0.18f).toSp() }
+        when {
+            !access -> {
+                Text("음악 정보를 보려면 알림 접근 허용이 필요합니다", color = color, fontSize = subSp, modifier = Modifier.weight(1f))
+                Chip("허용하러 가기", color, onOpenFull)
+            }
+            t == null || t.title.isEmpty() -> {
+                Icon(Icons.Outlined.MusicNote, null, tint = color.copy(alpha = 0.5f), modifier = Modifier.size(h * 0.5f))
+                Text("재생 중인 음악이 없습니다", color = color.copy(alpha = 0.8f), fontSize = textSp, modifier = Modifier.weight(1f))
+                Chip("애플뮤직 열기", color) { openAppleMusic(context) }
+            }
+            else -> {
+                // 그림·제목을 누르면 큰 음악 화면.
+                Row(
+                    Modifier.weight(1f).clickable(onClickLabel = "음악 화면", onClick = onOpenFull),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(pad),
+                ) {
+                    Box(
+                        Modifier.size(h - pad * 2).clip(RoundedCornerShape(h * 0.1f)).background(Color(0xFF2A2A2A)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (t.art != null) Image(t.art.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        else Icon(Icons.Outlined.MusicNote, null, tint = color.copy(alpha = 0.4f), modifier = Modifier.size(h * 0.4f))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(t.title, color = color, fontSize = textSp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            t.artist + if (t.remote) "  · TV" else "", color = color.copy(alpha = 0.7f), fontSize = subSp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                RoundButton(Icons.Filled.SkipPrevious, "이전 곡", color, h * 0.55f) { NowPlaying.previous() }
+                RoundButton(if (t.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "재생/멈춤", color, h * 0.72f) { NowPlaying.playPause() }
+                RoundButton(Icons.Filled.SkipNext, "다음 곡", color, h * 0.55f) { NowPlaying.next() }
+                Spacer(Modifier.width(pad * 0.5f))
+                RoundButton(Icons.Filled.VolumeDown, "소리 작게", color, h * 0.48f) { NowPlaying.volume(false) }
+                if (t.maxVolume > 0) {
+                    Text("${t.volume * 100 / t.maxVolume}%", color = color.copy(alpha = 0.7f), fontSize = subSp)
+                }
+                RoundButton(Icons.Filled.VolumeUp, "소리 크게", color, h * 0.48f) { NowPlaying.volume(true) }
             }
         }
     }

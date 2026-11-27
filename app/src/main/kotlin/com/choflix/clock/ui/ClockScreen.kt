@@ -142,6 +142,8 @@ fun ClockScreen(
     // 카드는 밤에 더 어둡게 — 넓은 회색 면이 어두운 방에서 밝게 떠 보이지 않게.
     val card = if (night) Color(0xFF151515) else Color(0xFF2A2A2A)
     var showBrightness by remember { mutableStateOf(false) }
+    // 음표 버튼으로 여닫는 아래 음악 막대.
+    var showMusic by remember { mutableStateOf(false) }
 
     // 번인 방지: 1분마다 화면 전체를 반지름 16dp 원 위의 다음 자리로 옮긴다(8자리 순환).
     var step by remember { mutableIntStateOf(0) }
@@ -258,7 +260,7 @@ fun ClockScreen(
                         ) {
                             SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onOpenDevices)
                             SquareButton(Icons.Outlined.LightMode, "밝기", main, card, u) { showBrightness = true }
-                            SquareButton(Icons.Outlined.MusicNote, "음악", main, card, u, onOpenMusic)
+                            SquareButton(Icons.Outlined.MusicNote, "음악", main, card, u) { showMusic = !showMusic }
                             Box {
                                 SquareButton(Icons.Outlined.Settings, "설정", main, card, u, onOpenSettings)
                                 // 새 버전이 있으면 빨간 점.
@@ -294,13 +296,21 @@ fun ClockScreen(
                         }
                     }
                 }
-                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
-                    val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
-                    FlipCard(
-                        "%02d".format(hour), if (settings.use24h) null else if (now.hour < 12) "AM" else "PM",
-                        font, settings.clockWeight, main, card, u, d, Modifier.weight(1f),
-                    )
-                    FlipCard("%02d".format(now.minute), null, font, settings.clockWeight, main, card, u, d, Modifier.weight(1f))
+                Box(Modifier.fillMaxWidth().weight(1f)) {
+                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(u * 16)) {
+                        val hour = if (settings.use24h) now.hour else (now.hour % 12).let { if (it == 0) 12 else it }
+                        FlipCard(
+                            "%02d".format(hour), if (settings.use24h) null else if (now.hour < 12) "AM" else "PM",
+                            font, settings.clockWeight, main, card, u, d, Modifier.weight(1f),
+                        )
+                        FlipCard("%02d".format(now.minute), null, font, settings.clockWeight, main, card, u, d, Modifier.weight(1f))
+                    }
+                    // 음악 막대: 폭은 시 카드 왼끝 ~ 분 카드 오른끝, 높이는 실내 온도·습도 카드와 같게(아랫변도 맞춤).
+                    // 반투명이라 밑의 시·분이 비쳐 보인다.
+                    if (showMusic) {
+                        val barH = u * (400f / 4.2f)
+                        MusicBar(main, barH, onOpenMusic, Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(barH))
+                    }
                 }
             }
         }
