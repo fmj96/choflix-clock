@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -75,6 +76,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.choflix.clock.data.BatteryInfo
 import com.choflix.clock.data.HomeState
+import com.choflix.clock.data.NowPlaying
 import com.choflix.clock.data.Holidays
 import com.choflix.clock.data.Holiday
 import com.choflix.clock.data.Events
@@ -144,6 +146,7 @@ fun ClockScreen(
     var showBrightness by remember { mutableStateOf(false) }
     // 음표 버튼으로 여닫는 아래 음악 막대.
     var showMusic by remember { mutableStateOf(false) }
+    val musicPlaying = NowPlaying.track.collectAsState().value?.playing == true
 
     // 번인 방지: 1분마다 화면 전체를 반지름 16dp 원 위의 다음 자리로 옮긴다(8자리 순환).
     var step by remember { mutableIntStateOf(0) }
@@ -258,11 +261,15 @@ fun ClockScreen(
                             // 버튼 넷 + 와이파이·배터리가 분 카드 폭에 들어가게 간격은 8.
                             horizontalArrangement = Arrangement.spacedBy(u * 8),
                         ) {
-                            SquareButton(Icons.Outlined.MusicNote, "음악", main, card, u) { showMusic = !showMusic }
-                            SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onOpenDevices)
+                            // 음악이 나오는 중이면 분홍 테두리·음표(글자 색이 분홍 계열이면 옅은 분홍).
+                            SquareButton(
+                                Icons.Outlined.MusicNote, "음악", main, card, u,
+                                active = if (musicPlaying) distinctFrom(main, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
+                            ) { showMusic = !showMusic }
+                            SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onClick = onOpenDevices)
                             SquareButton(Icons.Outlined.LightMode, "밝기", main, card, u) { showBrightness = true }
                             Box {
-                                SquareButton(Icons.Outlined.Settings, "설정", main, card, u, onOpenSettings)
+                                SquareButton(Icons.Outlined.Settings, "설정", main, card, u, onClick = onOpenSettings)
                                 // 새 버전이 있으면 빨간 점.
                                 if (update != null) {
                                     Box(Modifier.align(Alignment.TopEnd).padding(u * 4).size(u * 10).background(WarnRed, CircleShape))
@@ -464,16 +471,22 @@ private fun FlipHalf(
 }
 
 @Composable
-private fun SquareButton(icon: ImageVector, label: String, tint: Color, bg: Color, u: Dp, onClick: () -> Unit) {
+private fun SquareButton(
+    icon: ImageVector, label: String, tint: Color, bg: Color, u: Dp,
+    /** 켜져 있음을 보일 색(테두리·아이콘). null 이면 평소 모양. */
+    active: Color? = null,
+    onClick: () -> Unit,
+) {
     Box(
         Modifier
             .size(width = u * 52, height = u * 44)
             .clip(RoundedCornerShape(u * 12))
             .background(bg)
+            .then(if (active != null) Modifier.border(u * 2.5f, active, RoundedCornerShape(u * 12)) else Modifier)
             .clickable(onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, label, tint = tint, modifier = Modifier.size(u * 26))
+        Icon(icon, label, tint = active ?: tint, modifier = Modifier.size(u * 26))
     }
 }
 
