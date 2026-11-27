@@ -144,9 +144,10 @@ fun ClockScreen(
     // 카드는 밤에 더 어둡게 — 넓은 회색 면이 어두운 방에서 밝게 떠 보이지 않게.
     val card = if (night) Color(0xFF151515) else Color(0xFF2A2A2A)
     var showBrightness by remember { mutableStateOf(false) }
-    // 음표 버튼으로 여닫는 아래 음악 막대.
+    // 아래 음악 막대 — 재생이 시작되면 저절로 열리고, 음표 버튼으로 여닫는다.
     var showMusic by remember { mutableStateOf(false) }
     val musicPlaying = NowPlaying.track.collectAsState().value?.playing == true
+    LaunchedEffect(musicPlaying) { if (musicPlaying) showMusic = true }
 
     // 번인 방지: 1분마다 화면 전체를 반지름 16dp 원 위의 다음 자리로 옮긴다(8자리 순환).
     var step by remember { mutableIntStateOf(0) }
