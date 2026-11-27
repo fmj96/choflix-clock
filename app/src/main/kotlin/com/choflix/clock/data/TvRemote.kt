@@ -17,6 +17,15 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.IOException
+import java.io.File
+import java.security.KeyFactory
+import java.security.Signature
+import java.security.cert.CertificateFactory
+import java.security.spec.PKCS8EncodedKeySpec
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 import java.io.InputStream
 import java.math.BigInteger
 import java.net.InetSocketAddress
@@ -35,7 +44,6 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509ExtendedKeyManager
 import javax.net.ssl.X509TrustManager
-import javax.security.auth.x500.X500Principal
 import kotlin.coroutines.resume
 
 /**
@@ -44,11 +52,13 @@ import kotlin.coroutines.resume
  *  - 짝짓기(6467): TLS 로 붙어 TV 화면에 6자리 코드를 띄우고, 그 코드로 양쪽 공개키를 묶은 값을 보낸다.
  *  - 조작(6466): 같은 인증서로 붙어 인사를 주고받은 뒤 키 입력(전원 등)을 보낸다.
  *
- * 클라이언트 키는 폰의 Android 키 저장소에서 만들어 밖으로 나가지 않는다. 셋탑 인증서는 스스로
+ * 클라이언트 키는 앱 폴더에만 두고(키 저장소 AES 로 감쌈) 밖으로 보내지 않는다. 셋탑 인증서는 스스로
  * 서명한 것이라, 짝지을 때 본 인증서 지문과 같은지로 확인한다. 메시지는 길이(varint)+protobuf.
  */
 object TvRemote {
-    private const val ALIAS = "tv_remote_client"
+    private const val OLD_ALIAS = "tv_remote_client"
+    private const val WRAP_ALIAS = "tv_remote_wrap"
+    private const val ALIAS = "client"
     private const val SERVICE = "_androidtvremote2._tcp"
     private const val REMOTE_PORT = 6466
     private const val PAIR_PORT = 6467
@@ -95,13 +105,13 @@ object TvRemote {
     // ── 짝짓기 ──
 
     /** TV 화면에 코드를 띄운 채로 기다리는 짝짓기. [submit] 이나 [cancel] 로 끝낸다. */
-    class Pairing internal constructor(private val socket: SSLSocket, private val found: Found) {
+    class Pairing internal constructor(private val context: Context, private val socket: SSLSocket, private val found: Found) {
         /** 맞으면 null, 코드가 틀리면 그 안내(다시 넣을 수 있다). 셋탑이 거절하면 예외. */
         suspend fun submit(code: String, settings: Settings): String? = withContext(Dispatchers.IO) {
             val c = code.trim().uppercase()
             if (!Regex("[0-9A-F]{6}").matches(c)) return@withContext "TV 에 뜬 6자리(0~9, A~F)를 넣어 주세요"
             val server = socket.session.peerCertificates[0] as X509Certificate
-            val ck = clientCert().publicKey as RSAPublicKey
+            val ck = client(context).cert.publicKey as RSAPublicKey
             val sk = server.publicKey as RSAPublicKey
             val md = MessageDigest.getInstance("SHA-256")
             listOf(ck.modulus, ck.publicExponent, sk.modulus, sk.publicExponent).forEach { md.update(unsigned(it)) }
@@ -123,8 +133,9 @@ object TvRemote {
         fun cancel() { runCatching { socket.close() } }
     }
 
-    suspend fun startPairing(found: Found): Pairing = withContext(Dispatchers.IO) {
-        val s = open(found.host, PAIR_PORT, null)
+    suspend fun startPairing(context: Context, found: Found): Pairing = withContext(Dispatchers.IO) {
+        val app = context.applicationContext
+        val s = open(app, found.host, PAIR_PORT, null)
         try {
             exchange(s, pairing { msg(10) { str(1, "atvremote"); str(2, CLIENT_NAME) } })
             // 입력 방식: 16진수 6자리, 우리가 넣는 쪽(INPUT).
@@ -134,7 +145,7 @@ object TvRemote {
             runCatching { s.close() }
             throw e
         }
-        Pairing(s, found)
+        Pairing(app, s, found)
     }
 
     private fun pairing(block: Pb.() -> Unit) = Pb().apply { varint(1, 2); varint(2, 200); block() }.toBytes()
@@ -153,12 +164,12 @@ object TvRemote {
     suspend fun standby(context: Context, settings: Settings): String = withContext(Dispatchers.IO) {
         if (!settings.tvPaired) throw IOException("셋탑과 연결(짝짓기)되어 있지 않습니다")
         val s = try {
-            open(settings.tvHost, REMOTE_PORT, settings.tvCertSha)
+            open(context, settings.tvHost, REMOTE_PORT, settings.tvCertSha)
         } catch (e: IOException) {
             // IP 가 바뀌었을 수 있다(공유기 DHCP) — 이름으로 다시 찾는다.
             val f = discover(context).firstOrNull { it.name == settings.tvName } ?: throw e
             settings.tvHost = f.host
-            open(f.host, REMOTE_PORT, settings.tvCertSha)
+            open(context, f.host, REMOTE_PORT, settings.tvCertSha)
         }
         s.use { sock ->
             var on: Boolean? = null
@@ -213,33 +224,91 @@ object TvRemote {
 
     // ── TLS ──
 
-    private fun keyStore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+    /** 클라이언트 키·인증서. 키 저장소(하드웨어) 키는 셋탑이 고르는 서명 방식을 못 해 TLS 가 깨졌다(v1.6.0) —
+     *  보통 RSA 키를 쓰고, 개인키는 키 저장소의 AES 키로 감싸 앱 폴더에만 둔다. */
+    private class Client(val cert: X509Certificate, val key: PrivateKey)
 
-    private fun clientCert(): X509Certificate {
-        val ks = keyStore()
-        if (!ks.containsAlias(ALIAS)) {
-            val now = System.currentTimeMillis()
-            KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore").apply {
-                initialize(
-                    KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_SIGN)
-                        .setKeySize(2048)
-                        .setDigests(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384, KeyProperties.DIGEST_SHA512)
-                        .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1, KeyProperties.SIGNATURE_PADDING_RSA_PSS)
-                        .setCertificateSubject(X500Principal("CN=atvremote"))
-                        .setCertificateSerialNumber(BigInteger.valueOf(now))
-                        .setCertificateNotBefore(Date(now - 24 * 3600_000L))
-                        .setCertificateNotAfter(Date(now + 20L * 365 * 24 * 3600_000L))
-                        .build(),
-                )
-                generateKeyPair()
-            }
+    private var client: Client? = null
+
+    @Synchronized
+    private fun client(context: Context): Client {
+        client?.let { return it }
+        val dir = context.filesDir
+        val certFile = File(dir, "tv_client.crt")
+        val keyFile = File(dir, "tv_client.key")
+        val loaded = runCatching {
+            val cert = CertificateFactory.getInstance("X.509").generateCertificate(certFile.readBytes().inputStream()) as X509Certificate
+            val key = KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(unwrap(keyFile.readBytes())))
+            Client(cert, key)
+        }.getOrNull()
+        val c = loaded ?: run {
+            val kp = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
+            val der = selfSigned(kp)
+            certFile.writeBytes(der)
+            keyFile.writeBytes(wrap(kp.private.encoded))
+            Client(CertificateFactory.getInstance("X.509").generateCertificate(der.inputStream()) as X509Certificate, kp.private)
         }
-        return ks.getCertificate(ALIAS) as X509Certificate
+        // 예전(v1.6.0) 하드웨어 키는 지운다.
+        runCatching { KeyStore.getInstance("AndroidKeyStore").apply { load(null) }.deleteEntry(OLD_ALIAS) }
+        client = c
+        return c
     }
 
-    private fun open(host: String, port: Int, pinnedSha: String?): SSLSocket {
-        val cert = clientCert()
-        val key = keyStore().getKey(ALIAS, null) as PrivateKey
+    private fun wrapKey(): SecretKey {
+        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        (ks.getKey(WRAP_ALIAS, null) as? SecretKey)?.let { return it }
+        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").apply {
+            init(
+                KeyGenParameterSpec.Builder(WRAP_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                    .build(),
+            )
+        }.generateKey()
+    }
+
+    private fun wrap(plain: ByteArray): ByteArray {
+        val c = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, wrapKey()) }
+        return byteArrayOf(c.iv.size.toByte()) + c.iv + c.doFinal(plain)
+    }
+
+    private fun unwrap(data: ByteArray): ByteArray {
+        val n = data[0].toInt()
+        val c = Cipher.getInstance("AES/GCM/NoPadding")
+        c.init(Cipher.DECRYPT_MODE, wrapKey(), GCMParameterSpec(128, data, 1, n))
+        return c.doFinal(data, 1 + n, data.size - 1 - n)
+    }
+
+    /** 스스로 서명한 X.509 v3 인증서(CN=atvremote, SHA256withRSA) — DER 을 손으로 짠다. */
+    private fun selfSigned(kp: java.security.KeyPair): ByteArray {
+        fun tlv(tag: Int, body: ByteArray): ByteArray {
+            val len = body.size
+            val l = when {
+                len < 0x80 -> byteArrayOf(len.toByte())
+                len < 0x100 -> byteArrayOf(0x81.toByte(), len.toByte())
+                else -> byteArrayOf(0x82.toByte(), (len shr 8).toByte(), len.toByte())
+            }
+            return byteArrayOf(tag.toByte()) + l + body
+        }
+        fun seq(vararg parts: ByteArray) = tlv(0x30, parts.fold(ByteArray(0)) { a, b -> a + b })
+        val sha256Rsa = seq(byteArrayOf(0x06, 0x09, 0x2A, 0x86.toByte(), 0x48, 0x86.toByte(), 0xF7.toByte(), 0x0D, 0x01, 0x01, 0x0B), byteArrayOf(0x05, 0x00))
+        val name = seq(tlv(0x31, seq(byteArrayOf(0x06, 0x03, 0x55, 0x04, 0x03), tlv(0x0C, "atvremote".toByteArray()))))
+        val fmt = java.text.SimpleDateFormat("yyMMddHHmmss'Z'", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+        val now = System.currentTimeMillis()
+        val validity = seq(
+            tlv(0x17, fmt.format(Date(now - 24 * 3600_000L)).toByteArray()),
+            tlv(0x17, fmt.format(Date(now + 20L * 365 * 24 * 3600_000L)).toByteArray()),
+        )
+        val serial = tlv(0x02, BigInteger.valueOf(now).toByteArray())
+        val tbs = seq(tlv(0xA0, tlv(0x02, byteArrayOf(2))), serial, sha256Rsa, name, validity, name, kp.public.encoded)
+        val sig = Signature.getInstance("SHA256withRSA").run { initSign(kp.private); update(tbs); sign() }
+        return seq(tbs, sha256Rsa, tlv(0x03, byteArrayOf(0) + sig))
+    }
+
+    private fun open(context: Context, host: String, port: Int, pinnedSha: String?): SSLSocket {
+        val c = client(context)
+        val cert = c.cert
+        val key = c.key
         val km = object : X509ExtendedKeyManager() {
             override fun getClientAliases(keyType: String?, issuers: Array<out Principal>?) = arrayOf(ALIAS)
             override fun chooseClientAlias(keyType: Array<out String>?, issuers: Array<out Principal>?, socket: Socket?) = ALIAS

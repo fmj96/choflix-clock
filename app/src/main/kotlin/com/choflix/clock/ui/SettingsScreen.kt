@@ -653,7 +653,7 @@ private fun TvSection(settings: Settings) {
     fun startPair(f: TvRemote.Found) {
         scope.launch {
             status = "셋탑에 연결 중…"
-            runCatching { TvRemote.startPairing(f) }
+            runCatching { TvRemote.startPairing(context, f) }
                 .onSuccess { pairing = it; code = ""; status = "TV 화면에 코드가 떴습니다" }
                 .onFailure { status = "연결 실패: ${it.message}" }
         }
