@@ -185,6 +185,7 @@ fun MusicScreen(settings: Settings, onClose: () -> Unit) {
 
 /** 애플뮤직을 연다. 깔려 있지 않으면 플레이스토어. */
 internal fun openAppleMusic(context: Context) {
+    if (NowPlaying.openPlayer()) return
     val i = context.packageManager.getLaunchIntentForPackage(NowPlaying.APPLE_MUSIC)
         ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=${NowPlaying.APPLE_MUSIC}"))
     runCatching { context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }

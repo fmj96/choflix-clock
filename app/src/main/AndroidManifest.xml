@@ -14,6 +14,11 @@
     <!-- 다른 앱을 쓰다 손대지 않으면 시계로: 1픽셀 투명 창으로 터치가 있었는지만 안다. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- 안드로이드 11부터 남의 앱은 여기 적어야 보인다 — 없으면 애플뮤직이 '설치 안 됨'으로 보여 스토어로 갔다. -->
+    <queries>
+        <package android:name="com.apple.android.music" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

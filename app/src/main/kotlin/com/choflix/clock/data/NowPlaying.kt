@@ -104,6 +104,12 @@ object NowPlaying {
         if (track.value?.playing == true) t.pause() else t.play()
     }
 
+    /** 지금 재생 중인 앱의 '재생 중' 화면을 연다(앱이 세션에 걸어 둔 화면). 못 열면 false. */
+    fun openPlayer(): Boolean {
+        val pi = controller?.sessionActivity ?: return false
+        return runCatching { pi.send() }.isSuccess
+    }
+
     fun next() { controller?.transportControls?.skipToNext() }
     fun previous() { controller?.transportControls?.skipToPrevious() }
 
