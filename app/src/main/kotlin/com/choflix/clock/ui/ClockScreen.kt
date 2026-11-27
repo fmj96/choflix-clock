@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import com.choflix.clock.data.BatteryInfo
 import com.choflix.clock.data.HomeState
 import com.choflix.clock.data.NowPlaying
+import com.choflix.clock.data.TvRemote
 import com.choflix.clock.data.Holidays
 import com.choflix.clock.data.Holiday
 import com.choflix.clock.data.Events
@@ -267,8 +268,12 @@ fun ClockScreen(
                                 Icons.Outlined.MusicNote, "음악", main, card, u,
                                 active = if (showMusic) distinctFrom(main, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
                             ) {
-                                // 막대를 닫으면 음악도 멈춘다.
-                                if (showMusic && musicPlaying) NowPlaying.pause()
+                                // 막대를 닫으면 음악도 멈춘다. 셋탑으로 캐스트 중이었으면 셋탑도 대기로(설정에서 짝지었을 때).
+                                if (showMusic) {
+                                    val casting = NowPlaying.track.value?.remote == true
+                                    if (musicPlaying) NowPlaying.pause()
+                                    if (casting && settings.tvPaired && settings.tvStandbyOnClose) TvRemote.standbyAsync(context, settings)
+                                }
                                 showMusic = !showMusic
                             }
                             SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onClick = onOpenDevices)

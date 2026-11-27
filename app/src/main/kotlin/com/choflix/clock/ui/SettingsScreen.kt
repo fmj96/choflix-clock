@@ -61,6 +61,7 @@ import com.choflix.clock.data.Place
 import com.choflix.clock.data.Settings
 import com.choflix.clock.data.TuyaCloudClient
 import com.choflix.clock.data.TuyaRegion
+import com.choflix.clock.data.TvRemote
 import com.choflix.clock.data.Updater
 import com.choflix.clock.data.WeatherRepository
 import kotlinx.coroutines.delay
@@ -278,6 +279,9 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                     }
                 }
             }
+
+            Section("셋탑 (구글 TV) 리모컨")
+            TvSection(settings)
 
             Section("시계로 돌아오기")
             AutoReturnSection(settings)
@@ -629,4 +633,97 @@ private fun AutoReturnSection(settings: Settings) {
             }
         }) { Text("샤오미 기타 권한") }
     }
+}
+
+/** 셋탑과 짝짓기 — 한 번 해 두면 음악 막대를 닫을 때 셋탑도 대기로 보낼 수 있다. */
+@Composable
+private fun TvSection(settings: Settings) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var paired by remember { mutableStateOf(settings.tvPaired) }
+    var standbyOnClose by remember { mutableStateOf(settings.tvStandbyOnClose) }
+    var status by remember { mutableStateOf("") }
+    var searching by remember { mutableStateOf(false) }
+    var found by remember { mutableStateOf<List<TvRemote.Found>>(emptyList()) }
+    var pairing by remember { mutableStateOf<TvRemote.Pairing?>(null) }
+    var code by remember { mutableStateOf("") }
+    var manualIp by remember { mutableStateOf("") }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { pairing?.cancel() } }
+
+    fun startPair(f: TvRemote.Found) {
+        scope.launch {
+            status = "셋탑에 연결 중…"
+            runCatching { TvRemote.startPairing(f) }
+                .onSuccess { pairing = it; code = ""; status = "TV 화면에 코드가 떴습니다" }
+                .onFailure { status = "연결 실패: ${it.message}" }
+        }
+    }
+
+    when {
+        paired -> {
+            Text("연결됨: ${settings.tvName} (${settings.tvHost})", color = Color.White.copy(alpha = 0.8f))
+            Toggle("캐스트 중에 음악 막대를 닫으면 셋탑도 대기로", standbyOnClose) {
+                standbyOnClose = it; settings.tvStandbyOnClose = it
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = {
+                    scope.launch {
+                        status = "보내는 중…"
+                        status = runCatching { TvRemote.standby(context, settings) }.getOrElse { "실패: ${it.message}" }
+                    }
+                }) { Text("대기 테스트") }
+                OutlinedButton(onClick = { settings.forgetTv(); paired = false; status = "" }) { Text("연결 끊기") }
+            }
+        }
+        pairing != null -> {
+            Text("TV 화면에 뜬 6자리 코드를 넣어 주세요 (숫자와 A~F)", color = Color.White.copy(alpha = 0.8f))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    code, { code = it.uppercase().filter { c -> c.isLetterOrDigit() }.take(6) },
+                    label = { Text("코드") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters),
+                    modifier = Modifier.weight(1f),
+                )
+                Button(onClick = {
+                    val p = pairing ?: return@Button
+                    scope.launch {
+                        status = "확인 중…"
+                        runCatching { p.submit(code, settings) }.fold(
+                            { err ->
+                                if (err == null) { pairing = null; paired = true; status = "셋탑과 연결했습니다" } else status = err
+                            },
+                            { pairing = null; status = "실패: ${it.message} — 다시 찾아 연결해 주세요" },
+                        )
+                    }
+                }) { Text("확인") }
+                OutlinedButton(onClick = { pairing?.cancel(); pairing = null; status = "" }) { Text("취소") }
+            }
+        }
+        else -> {
+            Text(
+                "같은 와이파이의 구글 TV 셋탑을 찾아 한 번 짝지어 둡니다. 셋탑이 켜져 있어야 찾을 수 있고, " +
+                    "TV 화면에 뜨는 코드를 넣으면 끝납니다.",
+                color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp,
+            )
+            OutlinedButton(enabled = !searching, onClick = {
+                scope.launch {
+                    searching = true; status = ""
+                    found = runCatching { TvRemote.discover(context) }.getOrDefault(emptyList())
+                    searching = false
+                    if (found.isEmpty()) status = "찾지 못했습니다 — 셋탑이 켜져 있고 같은 와이파이인지 보거나, IP 를 직접 넣어 주세요"
+                }
+            }) { Text(if (searching) "찾는 중…" else "셋탑 찾기") }
+            found.forEach { f ->
+                OutlinedButton(onClick = { startPair(f) }) { Text("${f.name}   ${f.host}") }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    manualIp, { manualIp = it.trim() }, label = { Text("IP 직접 입력 (예: 192.168.0.20)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri), modifier = Modifier.weight(1f),
+                )
+                OutlinedButton(enabled = manualIp.isNotEmpty(), onClick = { startPair(TvRemote.Found(manualIp, manualIp)) }) { Text("연결") }
+            }
+        }
+    }
+    if (status.isNotEmpty()) Text(status, color = Color(0xFF9CC9FF))
 }

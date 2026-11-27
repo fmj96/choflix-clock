@@ -128,6 +128,25 @@ class Settings(context: Context) {
         get() = p.getInt("autoReturnMin", 5)
         set(v) = p.edit().putInt("autoReturnMin", v).apply()
 
+    // ── 셋탑(구글 TV) 리모컨 — 같은 집 안 주소·인증서 지문만 둔다 ──
+    var tvHost: String
+        get() = p.getString("tvHost", "") ?: ""
+        set(v) = p.edit().putString("tvHost", v).apply()
+    var tvName: String
+        get() = p.getString("tvName", "") ?: ""
+        set(v) = p.edit().putString("tvName", v).apply()
+    var tvCertSha: String
+        get() = p.getString("tvCertSha", "") ?: ""
+        set(v) = p.edit().putString("tvCertSha", v).apply()
+    /** 캐스트 중에 음악 막대를 닫으면 셋탑도 대기로. */
+    var tvStandbyOnClose: Boolean
+        get() = p.getBoolean("tvStandbyOnClose", true)
+        set(v) = p.edit().putBoolean("tvStandbyOnClose", v).apply()
+    val tvPaired: Boolean
+        get() = tvHost.isNotEmpty() && tvCertSha.isNotEmpty()
+
+    fun forgetTv() = p.edit().remove("tvHost").remove("tvName").remove("tvCertSha").apply()
+
     val tuyaConfigured: Boolean
         get() = tuyaAccessId.isNotEmpty() && tuyaSecret.isNotEmpty()
 
