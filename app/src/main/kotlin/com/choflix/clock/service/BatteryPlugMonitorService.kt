@@ -55,6 +55,8 @@ class BatteryPlugMonitorService : Service() {
     private var lastSentAt = 0L
     private var mismatchSince = 0L
 
+    private var autoReturn: AutoReturn? = null
+
     private var client: TuyaCloudClient? = null
     private var clientKey = ""
 
@@ -90,11 +92,13 @@ class BatteryPlugMonitorService : Service() {
         runCatching { getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(netCallback) }
         // 새 버전 확인은 6시간마다 — 있으면 시계의 톱니바퀴에 빨간 점이 뜬다.
         scope.launch { while (true) { runCatching { Updater.check() }; delay(6 * 3600_000L) } }
+        autoReturn = AutoReturn(this, settings).also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
 
     override fun onDestroy() {
+        autoReturn?.stop()
         unregisterReceiver(batteryReceiver)
         runCatching { getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(netCallback) }
         scope.cancel()

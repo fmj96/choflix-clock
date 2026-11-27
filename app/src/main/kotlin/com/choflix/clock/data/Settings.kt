@@ -119,6 +119,15 @@ class Settings(context: Context) {
         get() = p.getInt("maxTempC", 38)
         set(v) = p.edit().putInt("maxTempC", v).apply()
 
+    // ── 다른 앱에서 시계로 돌아오기 ──
+    var autoReturn: Boolean
+        get() = p.getBoolean("autoReturn", true)
+        set(v) = p.edit().putBoolean("autoReturn", v).apply()
+    /** 손대지 않고 기다리는 시간(분). */
+    var autoReturnMin: Int
+        get() = p.getInt("autoReturnMin", 5)
+        set(v) = p.edit().putInt("autoReturnMin", v).apply()
+
     val tuyaConfigured: Boolean
         get() = tuyaAccessId.isNotEmpty() && tuyaSecret.isNotEmpty()
 

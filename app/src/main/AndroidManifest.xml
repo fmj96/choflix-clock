@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- 앱 안 업데이트: 깃허브에서 받은 새 버전 APK 를 설치 화면에 넘긴다. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 다른 앱을 쓰다 손대지 않으면 시계로: 1픽셀 투명 창으로 터치가 있었는지만 안다. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:allowBackup="false"

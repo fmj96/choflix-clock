@@ -279,6 +279,9 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 }
             }
 
+            Section("시계로 돌아오기")
+            AutoReturnSection(settings)
+
             Section("업데이트")
             UpdateSection()
 
@@ -572,3 +575,58 @@ private fun HourStepper(hour: Int, onChange: (Int) -> Unit) {
 }
 
 private const val LOCKED_IDLE_MS = 120_000L
+
+/** 다른 앱에서 손대지 않으면 시계로 돌아오기 — 다른 앱 위에 표시 권한이 있어야 터치를 알 수 있다. */
+@Composable
+private fun AutoReturnSection(settings: Settings) {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(settings.autoReturn) }
+    var minutes by remember { mutableStateOf(settings.autoReturnMin) }
+    var allowed by remember { mutableStateOf(android.provider.Settings.canDrawOverlays(context)) }
+    // 권한 화면에서 돌아오면 바로 반영되게 가끔 다시 본다.
+    LaunchedEffect(Unit) {
+        while (true) { allowed = android.provider.Settings.canDrawOverlays(context); delay(1000) }
+    }
+
+    Toggle("다른 앱에서 ${minutes}분 동안 조작이 없으면 시계로", enabled) { enabled = it; settings.autoReturn = it }
+    if (!enabled) return
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(1, 3, 5, 10, 30).forEach { m ->
+            val on = m == minutes
+            OutlinedButton(
+                onClick = { minutes = m; settings.autoReturnMin = m },
+                border = androidx.compose.foundation.BorderStroke(1.dp, if (on) Color(0xFF3D8BFF) else Color.White.copy(alpha = 0.3f)),
+            ) { Text("${m}분", color = if (on) Color(0xFF3D8BFF) else Color.White) }
+        }
+    }
+    Text(
+        "소리·영상이 나오는 중이거나 통화 중이면 기다립니다.\n" +
+            "· '다른 앱 위에 표시'를 허용해야 다른 앱의 터치를 알 수 있습니다(누른 위치·내용은 모릅니다)\n" +
+            "· 샤오미는 앱 정보 → 기타 권한에서 '백그라운드에서 팝업 창 표시'도 허용해 주세요",
+        color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = {
+            runCatching {
+                context.startActivity(
+                    Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:${context.packageName}"))
+                )
+            }
+        }) { Text(if (allowed) "다른 앱 위에 표시 허용됨 ✓" else "다른 앱 위에 표시 허용하기") }
+        OutlinedButton(onClick = {
+            // 샤오미 '기타 권한' 화면 — 없는 폰이면 앱 정보로.
+            runCatching {
+                context.startActivity(
+                    Intent("miui.intent.action.APP_PERM_EDITOR")
+                        .putExtra("extra_pkgname", context.packageName)
+                )
+            }.onFailure {
+                context.startActivity(
+                    Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:${context.packageName}"))
+                )
+            }
+        }) { Text("샤오미 기타 권한") }
+    }
+}
