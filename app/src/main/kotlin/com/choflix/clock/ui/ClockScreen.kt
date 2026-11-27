@@ -266,7 +266,11 @@ fun ClockScreen(
                             SquareButton(
                                 Icons.Outlined.MusicNote, "음악", main, card, u,
                                 active = if (showMusic) distinctFrom(main, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
-                            ) { showMusic = !showMusic }
+                            ) {
+                                // 막대를 닫으면 음악도 멈춘다.
+                                if (showMusic && musicPlaying) NowPlaying.pause()
+                                showMusic = !showMusic
+                            }
                             SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onClick = onOpenDevices)
                             SquareButton(Icons.Outlined.LightMode, "밝기", main, card, u) { showBrightness = true }
                             Box {

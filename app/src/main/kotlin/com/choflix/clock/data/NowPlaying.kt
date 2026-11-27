@@ -110,6 +110,8 @@ object NowPlaying {
         return runCatching { pi.send() }.isSuccess
     }
 
+    fun pause() { controller?.transportControls?.pause() }
+
     fun next() { controller?.transportControls?.skipToNext() }
     fun previous() { controller?.transportControls?.skipToPrevious() }
 
