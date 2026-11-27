@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
@@ -183,6 +185,19 @@ fun MusicScreen(settings: Settings, onClose: () -> Unit) {
     }
 }
 
+/**
+ * 캐스트 버튼. 남의 앱(애플뮤직)의 캐스트를 이 앱이 대신 걸 수는 없다 — 안드로이드의 '미디어 출력'
+ * 창(재생 중인 앱의 소리를 어디로 보낼지 고르는 시스템 창)을 그 앱 이름으로 연다. 그 창이 없는 폰이면
+ * 애플뮤직의 재생 화면(캐스트 버튼이 있는 곳)을 연다.
+ */
+internal fun openCast(context: Context) {
+    val pkg = NowPlaying.track.value?.app ?: NowPlaying.APPLE_MUSIC
+    val panel = Intent("android.settings.panel.action.MEDIA_OUTPUT")
+        .putExtra("com.android.settings.panel.extra.PACKAGE_NAME", pkg)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    if (runCatching { context.startActivity(panel) }.isFailure) openAppleMusic(context)
+}
+
 /** 애플뮤직을 연다. 깔려 있지 않으면 플레이스토어. */
 internal fun openAppleMusic(context: Context) {
     if (NowPlaying.openPlayer()) return
@@ -250,6 +265,8 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
                         )
                     }
                 }
+                // 캐스트: 연결돼 있으면(세션이 원격) 꽉 찬 그림. 셋탑이 대기로 가도 애플뮤직이 연결로 남겨 두기도 한다.
+                RoundButton(if (t.remote) Icons.Filled.CastConnected else Icons.Filled.Cast, "캐스트", color, h * 0.48f) { openCast(context) }
                 RoundButton(Icons.Filled.SkipPrevious, "이전 곡", color, h * 0.55f) { NowPlaying.previous() }
                 RoundButton(if (t.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "재생/멈춤", color, h * 0.72f) { NowPlaying.playPause() }
                 RoundButton(Icons.Filled.SkipNext, "다음 곡", color, h * 0.55f) { NowPlaying.next() }
