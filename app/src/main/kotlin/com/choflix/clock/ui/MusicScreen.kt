@@ -193,6 +193,7 @@ internal fun openAppleMusic(context: Context) {
 /**
  * 시계 화면 아래에 겹쳐 띄우는 음악 막대(음표 버튼으로 열고 닫는다). 밑의 시·분이 비쳐 보이게
  * 반투명. 크기는 부르는 쪽이 정하고, 안은 그 높이 [h] 에 맞춰 그린다.
+ * [onOpenFull] 은 알림 접근 허용 안내가 있는 큰 음악 화면으로 간다.
  */
 @Composable
 internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Modifier) {
@@ -227,9 +228,9 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
                 Chip("애플뮤직 열기", color) { openAppleMusic(context) }
             }
             else -> {
-                // 그림·제목을 누르면 큰 음악 화면.
+                // 그림·제목을 누르면 애플뮤직 앱으로 — 곡 고르기·캐스트는 거기서 한다.
                 Row(
-                    Modifier.weight(1f).clickable(onClickLabel = "음악 화면", onClick = onOpenFull),
+                    Modifier.weight(1f).clickable(onClickLabel = "애플뮤직 열기") { openAppleMusic(context) },
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(pad),
                 ) {
