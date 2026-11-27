@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -247,15 +248,19 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
                     Column(Modifier.weight(1f)) {
                         Text(t.title, color = color, fontSize = textSp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            t.artist + if (t.remote) "  · TV" else "", color = color.copy(alpha = 0.7f), fontSize = subSp,
+                            t.artist, color = color.copy(alpha = 0.7f), fontSize = subSp,
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
-                // 캐스트: 연결돼 있으면(세션이 원격) 꽉 찬 그림. 셋탑이 대기로 가도 애플뮤직이 연결로 남겨 두기도 한다.
-                // 애플뮤직은 셋탑을 안드로이드 '미디어 출력' 창에 내놓지 않는다(폰 스피커만 보임, v1.5.2 실사용) —
-                // 그래서 애플뮤직 재생 화면을 열고, 거기 캐스트 버튼으로 고른다.
-                RoundButton(if (t.remote) Icons.Filled.CastConnected else Icons.Filled.Cast, "캐스트", color, h * 0.48f) { openAppleMusic(context) }
+                // 캐스트: 연결돼 있으면(세션이 원격) 분홍으로 켜짐, 아니면 옅게. 셋탑이 대기로 가도 애플뮤직이 연결로
+                // 남겨 두기도 한다. 애플뮤직은 셋탑을 안드로이드 '미디어 출력' 창에 내놓지 않아(폰 스피커만 보임,
+                // v1.5.2 실사용) 누르면 애플뮤직 재생 화면을 열고, 거기 캐스트 버튼으로 고른다.
+                RoundButton(
+                    if (t.remote) Icons.Filled.CastConnected else Icons.Filled.Cast, "캐스트",
+                    if (t.remote) color else color.copy(alpha = 0.45f), h * 0.48f,
+                    active = if (t.remote) distinctFrom(color, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
+                ) { openAppleMusic(context) }
                 RoundButton(Icons.Filled.SkipPrevious, "이전 곡", color, h * 0.55f) { NowPlaying.previous() }
                 RoundButton(if (t.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "재생/멈춤", color, h * 0.72f) { NowPlaying.playPause() }
                 RoundButton(Icons.Filled.SkipNext, "다음 곡", color, h * 0.55f) { NowPlaying.next() }
@@ -271,12 +276,15 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
 }
 
 @Composable
-private fun RoundButton(icon: ImageVector, label: String, color: Color, size: Dp, onClick: () -> Unit) {
+private fun RoundButton(icon: ImageVector, label: String, color: Color, size: Dp, active: Color? = null, onClick: () -> Unit) {
+    // active 가 있으면 그 색 테두리·아이콘(음표 버튼처럼 켜짐 표시).
+    var m = Modifier.size(size).clip(CircleShape).background(Color(0xFF2A2A2A))
+    if (active != null) m = m.border(2.dp, active, CircleShape)
     Box(
-        Modifier.size(size).clip(CircleShape).background(Color(0xFF2A2A2A)).clickable(onClickLabel = label, onClick = onClick),
+        m.clickable(onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, label, tint = color, modifier = Modifier.size(size * 0.55f))
+        Icon(icon, label, tint = active ?: color, modifier = Modifier.size(size * 0.55f))
     }
 }
 
