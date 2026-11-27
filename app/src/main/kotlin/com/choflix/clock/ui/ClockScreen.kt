@@ -262,10 +262,10 @@ fun ClockScreen(
                             // 버튼 넷 + 와이파이·배터리가 분 카드 폭에 들어가게 간격은 8.
                             horizontalArrangement = Arrangement.spacedBy(u * 8),
                         ) {
-                            // 음악이 나오는 중이면 분홍 테두리·음표(글자 색이 분홍 계열이면 옅은 분홍).
+                            // 음악 막대가 떠 있으면 분홍 테두리·음표(글자 색이 분홍 계열이면 옅은 분홍).
                             SquareButton(
                                 Icons.Outlined.MusicNote, "음악", main, card, u,
-                                active = if (musicPlaying) distinctFrom(main, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
+                                active = if (showMusic) distinctFrom(main, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
                             ) { showMusic = !showMusic }
                             SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onClick = onOpenDevices)
                             SquareButton(Icons.Outlined.LightMode, "밝기", main, card, u) { showBrightness = true }
