@@ -185,28 +185,6 @@ fun MusicScreen(settings: Settings, onClose: () -> Unit) {
     }
 }
 
-/**
- * 캐스트 버튼. 남의 앱(애플뮤직)의 캐스트를 이 앱이 대신 걸 수는 없다 — 안드로이드의 '미디어 출력'
- * 창(재생 중인 앱의 소리를 어디로 보낼지 고르는 시스템 창)을 그 앱 이름으로 연다.
- *  1. 시스템 UI 의 미디어 출력 창(안드로이드 12~) — MIUI 는 설정 쪽 패널이 없어 이게 먼저다.
- *  2. 설정의 미디어 출력 패널(안드로이드 10~11 순정).
- *  3. 둘 다 없으면 애플뮤직 재생 화면(캐스트 버튼이 있는 곳).
- */
-internal fun openCast(context: Context) {
-    val pkg = NowPlaying.track.value?.app ?: NowPlaying.APPLE_MUSIC
-    val dialog = Intent("com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG")
-        .setPackage("com.android.systemui")
-        .putExtra("package_name", pkg)
-    if (context.packageManager.queryBroadcastReceivers(dialog, 0).isNotEmpty()) {
-        context.sendBroadcast(dialog)
-        return
-    }
-    val panel = Intent("android.settings.panel.action.MEDIA_OUTPUT")
-        .putExtra("com.android.settings.panel.extra.PACKAGE_NAME", pkg)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    if (runCatching { context.startActivity(panel) }.isFailure) openAppleMusic(context)
-}
-
 /** 애플뮤직을 연다. 깔려 있지 않으면 플레이스토어. */
 internal fun openAppleMusic(context: Context) {
     if (NowPlaying.openPlayer()) return
@@ -275,7 +253,9 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
                     }
                 }
                 // 캐스트: 연결돼 있으면(세션이 원격) 꽉 찬 그림. 셋탑이 대기로 가도 애플뮤직이 연결로 남겨 두기도 한다.
-                RoundButton(if (t.remote) Icons.Filled.CastConnected else Icons.Filled.Cast, "캐스트", color, h * 0.48f) { openCast(context) }
+                // 애플뮤직은 셋탑을 안드로이드 '미디어 출력' 창에 내놓지 않는다(폰 스피커만 보임, v1.5.2 실사용) —
+                // 그래서 애플뮤직 재생 화면을 열고, 거기 캐스트 버튼으로 고른다.
+                RoundButton(if (t.remote) Icons.Filled.CastConnected else Icons.Filled.Cast, "캐스트", color, h * 0.48f) { openAppleMusic(context) }
                 RoundButton(Icons.Filled.SkipPrevious, "이전 곡", color, h * 0.55f) { NowPlaying.previous() }
                 RoundButton(if (t.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "재생/멈춤", color, h * 0.72f) { NowPlaying.playPause() }
                 RoundButton(Icons.Filled.SkipNext, "다음 곡", color, h * 0.55f) { NowPlaying.next() }
