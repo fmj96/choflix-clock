@@ -283,6 +283,7 @@ fun ClockScreen(
                                     settings,
                                     onDone = { askCastOff = false; showMusic = false },
                                     onDismiss = { askCastOff = false },
+                                    onMusicOnly = { askCastOff = false; showMusic = false },
                                 )
                             }
                             SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onClick = onOpenDevices)

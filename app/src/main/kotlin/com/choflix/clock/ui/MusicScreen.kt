@@ -324,21 +324,40 @@ private fun Chip(label: String, color: Color, onClick: () -> Unit) {
 
 private const val IDLE_MS = 60_000L
 
-/** 셋탑 스피커를 끌까요? — 확인이면 음악을 멈추고 셋탑을 대기로. */
+/**
+ * 셋탑 스피커를 끌까요? — 확인이면 음악을 멈추고 셋탑을 대기로.
+ * [onMusicOnly] 를 주면(음표 버튼에서) '음악만 종료' 버튼도 둔다 — 음악만 멈추고 셋탑은 그대로.
+ */
 @Composable
-internal fun CastOffDialog(settings: Settings, onDone: () -> Unit, onDismiss: () -> Unit) {
+internal fun CastOffDialog(settings: Settings, onDone: () -> Unit, onDismiss: () -> Unit, onMusicOnly: (() -> Unit)? = null) {
     val context = LocalContext.current
-    ConfirmDialog(
-        "셋탑 스피커 끄기",
-        if (settings.tvPaired) "음악을 멈추고 셋탑 스피커를 끌까요?"
-        else "셋탑 리모컨이 연결되어 있지 않아 음악만 멈춥니다(설정 → 셋탑 리모컨). 멈출까요?",
-        onConfirm = {
-            NowPlaying.pause()
-            if (settings.tvPaired) TvRemote.standbyAsync(context, settings)
-            onDone()
-        },
-        onDismiss = onDismiss,
-    )
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("셋탑 스피커 끄기") },
+            text = {
+                Text(
+                    if (settings.tvPaired) "음악을 멈추고 셋탑 스피커도 끌까요?"
+                    else "셋탑 리모컨이 연결되어 있지 않아 음악만 멈춥니다(설정 → 셋탑 리모컨). 멈출까요?",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    NowPlaying.pause()
+                    if (settings.tvPaired) TvRemote.standbyAsync(context, settings)
+                    onDone()
+                }) { Text(if (settings.tvPaired) "셋탑도 끄기" else "확인") }
+            },
+            dismissButton = {
+                Row {
+                    if (onMusicOnly != null && settings.tvPaired) {
+                        TextButton(onClick = { NowPlaying.pause(); onMusicOnly() }) { Text("음악만 종료") }
+                    }
+                    TextButton(onClick = onDismiss) { Text("취소") }
+                }
+            },
+        )
+    }
 }
 
 @Composable
