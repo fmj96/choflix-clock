@@ -115,8 +115,27 @@ object NowPlaying {
     fun next() { controller?.transportControls?.skipToNext() }
     fun previous() { controller?.transportControls?.skipToPrevious() }
 
-    /** 볼륨 한 칸. 캐스트 중이면 TV(스피커) 볼륨이 움직인다. */
+    private var pendingVolume = -1
+    private var pendingAt = 0L
+
+    /**
+     * 볼륨 1단위. 캐스트 중이면 TV(스피커) 볼륨이 움직인다. 한 칸 올리기(adjustVolume)는 앱이 정한 폭
+     * (애플뮤직 캐스트는 5% 남짓)으로 움직여 값을 직접 정한다. 빨리 여러 번 누르면 세션 값이 늦게
+     * 따라오므로 방금 정한 값에서 이어 센다.
+     */
     fun volume(up: Boolean) {
-        controller?.adjustVolume(if (up) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER, 0)
+        val c = controller ?: return
+        val info = c.playbackInfo ?: return
+        if (info.volumeControl == android.media.VolumeProvider.VOLUME_CONTROL_FIXED || info.maxVolume <= 0) {
+            c.adjustVolume(if (up) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER, 0)
+            return
+        }
+        val now = System.currentTimeMillis()
+        val base = if (pendingVolume >= 0 && now - pendingAt < 1500) pendingVolume else info.currentVolume
+        val v = (base + if (up) 1 else -1).coerceIn(0, info.maxVolume)
+        pendingVolume = v
+        pendingAt = now
+        c.setVolumeTo(v, 0)
+        track.value = track.value?.copy(volume = v)
     }
 }
