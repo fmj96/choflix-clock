@@ -128,6 +128,11 @@ class Settings(context: Context) {
         get() = p.getInt("autoReturnMin", 5)
         set(v) = p.edit().putInt("autoReturnMin", v).apply()
 
+    /** 시계에서 연 애플뮤직을 가로 화면으로(다른 앱 위에 표시 권한 필요). */
+    var musicLandscape: Boolean
+        get() = p.getBoolean("musicLandscape", true)
+        set(v) = p.edit().putBoolean("musicLandscape", v).apply()
+
     // ── 셋탑(구글 TV) 리모컨 — 같은 집 안 주소·인증서 지문만 둔다 ──
     var tvHost: String
         get() = p.getString("tvHost", "") ?: ""

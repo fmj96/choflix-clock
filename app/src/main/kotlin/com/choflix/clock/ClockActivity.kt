@@ -21,6 +21,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.choflix.clock.data.Settings
 import com.choflix.clock.service.AutoReturn
+import com.choflix.clock.service.LandscapeLock
 import com.choflix.clock.service.BatteryPlugMonitorService
 import com.choflix.clock.data.NowPlaying
 import com.choflix.clock.ui.ClockScreen
@@ -137,6 +138,7 @@ class ClockActivity : ComponentActivity(), SensorEventListener {
     override fun onResume() {
         super.onResume()
         AutoReturn.clockInFront = true
+        LandscapeLock.release(this)
         hideSystemBars()
         // 음표 버튼이 '재생 중'을 보이려면 곡 정보를 듣고 있어야 한다(알림 접근을 허용했을 때만 붙는다).
         NowPlaying.start(this)

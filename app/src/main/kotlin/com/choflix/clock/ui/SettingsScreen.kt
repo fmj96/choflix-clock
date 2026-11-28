@@ -280,6 +280,14 @@ fun SettingsScreen(settings: Settings, onClose: () -> Unit) {
                 }
             }
 
+            Section("음악")
+            run {
+                var landscape by remember { mutableStateOf(settings.musicLandscape) }
+                Toggle("시계에서 연 애플뮤직을 가로 화면으로 (다른 앱 위에 표시 허용 필요)", landscape) {
+                    landscape = it; settings.musicLandscape = it
+                }
+            }
+
             Section("셋탑 (구글 TV) 리모컨")
             TvSection(settings)
 
