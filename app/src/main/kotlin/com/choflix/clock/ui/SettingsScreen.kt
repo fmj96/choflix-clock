@@ -641,7 +641,6 @@ private fun TvSection(settings: Settings) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var paired by remember { mutableStateOf(settings.tvPaired) }
-    var standbyOnClose by remember { mutableStateOf(settings.tvStandbyOnClose) }
     var status by remember { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
     var found by remember { mutableStateOf<List<TvRemote.Found>>(emptyList()) }
@@ -662,9 +661,10 @@ private fun TvSection(settings: Settings) {
     when {
         paired -> {
             Text("연결됨: ${settings.tvName} (${settings.tvHost})", color = Color.White.copy(alpha = 0.8f))
-            Toggle("음악 막대를 닫으면 셋탑도 대기로", standbyOnClose) {
-                standbyOnClose = it; settings.tvStandbyOnClose = it
-            }
+            Text(
+                "음악 막대의 캐스트 버튼으로 셋탑 스피커를 켜고 끌 수 있습니다.",
+                color = Color.White.copy(alpha = 0.6f), fontSize = 13.sp,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = {
                     scope.launch {

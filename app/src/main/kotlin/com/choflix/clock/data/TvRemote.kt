@@ -66,6 +66,7 @@ object TvRemote {
 
     private const val KEY_POWER = 26L
     private const val KEY_SLEEP = 223L
+    private const val KEY_WAKEUP = 224L
 
     data class Found(val name: String, val host: String)
 
@@ -160,8 +161,26 @@ object TvRemote {
 
     // ── 조작 ──
 
-    /** 셋탑을 대기로. 이미 꺼져 있으면 그대로 둔다. 결과 안내를 돌려준다. */
-    suspend fun standby(context: Context, settings: Settings): String = withContext(Dispatchers.IO) {
+    /** 셋탑을 대기로. 결과 안내를 돌려준다. */
+    suspend fun standby(context: Context, settings: Settings): String = session(context, settings) { sock, on ->
+        // 켜져 있다고 하면 전원 키(누를 때마다 켜짐/꺼짐이라 켜져 있을 때만). 아니면 잠자기 키 — 이미 자고 있으면
+        // 아무 일도 없다. 캐스트로 음악만 나올 때 셋탑이 '꺼짐'으로 알려 와 그냥 두던 것(v1.6.x 실사용) 때문.
+        if (on == true) {
+            key(sock, KEY_POWER); "셋탑 스피커를 껐습니다"
+        } else {
+            key(sock, KEY_SLEEP); "셋탑에 대기 명령을 보냈습니다"
+        }
+    }
+
+    /** 셋탑을 켠다. 깨우기 키는 이미 켜져 있으면 아무 일도 없다(전원 키처럼 껐다 켜지 않는다). */
+    suspend fun wake(context: Context, settings: Settings): String = session(context, settings) { sock, on ->
+        if (on == true) "셋탑이 이미 켜져 있습니다" else { key(sock, KEY_WAKEUP); "셋탑 스피커를 켰습니다" }
+    }
+
+    /** 조작 연결을 열어 인사를 마친 뒤 [action](소켓, 켜짐 여부)을 하고 닫는다. */
+    private suspend fun session(
+        context: Context, settings: Settings, action: (SSLSocket, Boolean?) -> String,
+    ): String = withContext(Dispatchers.IO) {
         if (!settings.tvPaired) throw IOException("셋탑과 연결(짝짓기)되어 있지 않습니다")
         val s = try {
             open(context, settings.tvHost, REMOTE_PORT, settings.tvCertSha)
@@ -196,13 +215,7 @@ object TvRemote {
                 }
             }
             if (!ready) throw IOException("셋탑이 응답하지 않습니다")
-            // 켜져 있다고 하면 전원 키(누를 때마다 켜짐/꺼짐이라 켜져 있을 때만). 아니면 잠자기 키 — 이미 자고 있으면
-            // 아무 일도 없다. 캐스트로 음악만 나올 때 셋탑이 '꺼짐'으로 알려 와 그냥 두던 것(v1.6.x 실사용) 때문.
-            val result = if (on == true) {
-                key(sock, KEY_POWER); "셋탑을 대기로 바꿨습니다"
-            } else {
-                key(sock, KEY_SLEEP); "셋탑에 대기 명령을 보냈습니다"
-            }
+            val result = action(sock, on)
             Thread.sleep(500) // 끊기 전에 키가 건너가게.
             result
         }
@@ -210,14 +223,21 @@ object TvRemote {
 
     private val bg = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** 화면에서 부를 때 — 기다리지 않고, 결과는 짧은 알림으로. */
-    fun standbyAsync(context: Context, settings: Settings) {
+    /** 화면에서 부를 때 — 기다리지 않고, 결과는 짧은 알림으로. [after] 는 끝난 뒤(성공·실패 모두) 메인에서. */
+    fun standbyAsync(context: Context, settings: Settings) = runAsync(context, 800) { standby(it, settings) }
+
+    fun wakeAsync(context: Context, settings: Settings, after: () -> Unit = {}) = runAsync(context, 0, after) { wake(it, settings) }
+
+    private fun runAsync(context: Context, wait: Long, after: () -> Unit = {}, block: suspend (Context) -> String) {
         val app = context.applicationContext
         bg.launch {
             // 일시정지가 셋탑에 먼저 닿게 조금 기다린다.
-            delay(800)
-            val msg = runCatching { standby(app, settings) }.getOrElse { "셋탑 대기 실패: ${it.message}" }
-            withContext(Dispatchers.Main) { Toast.makeText(app, msg, Toast.LENGTH_SHORT).show() }
+            delay(wait)
+            val msg = runCatching { block(app) }.getOrElse { "셋탑 조작 실패: ${it.message}" }
+            withContext(Dispatchers.Main) {
+                Toast.makeText(app, msg, Toast.LENGTH_SHORT).show()
+                after()
+            }
         }
     }
 

@@ -77,7 +77,6 @@ import androidx.compose.ui.unit.dp
 import com.choflix.clock.data.BatteryInfo
 import com.choflix.clock.data.HomeState
 import com.choflix.clock.data.NowPlaying
-import com.choflix.clock.data.TvRemote
 import com.choflix.clock.data.Holidays
 import com.choflix.clock.data.Holiday
 import com.choflix.clock.data.Events
@@ -147,6 +146,7 @@ fun ClockScreen(
     var showBrightness by remember { mutableStateOf(false) }
     // 아래 음악 막대 — 재생이 시작되면 저절로 열리고, 음표 버튼으로 여닫는다.
     var showMusic by remember { mutableStateOf(false) }
+    var askCastOff by remember { mutableStateOf(false) }
     val musicPlaying = NowPlaying.track.collectAsState().value?.playing == true
     LaunchedEffect(musicPlaying) { if (musicPlaying) showMusic = true }
 
@@ -268,13 +268,22 @@ fun ClockScreen(
                                 Icons.Outlined.MusicNote, "음악", main, card, u,
                                 active = if (showMusic) distinctFrom(main, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
                             ) {
-                                // 막대를 닫으면 음악도 멈추고 셋탑도 대기로(설정에서 짝지었을 때). 캐스트 여부는 보지 않는다 —
-                                // 애플뮤직의 '원격' 표시는 늦거나 남아 있어 믿기 어렵다.
-                                if (showMusic) {
-                                    if (musicPlaying) NowPlaying.pause()
-                                    if (settings.tvPaired && settings.tvStandbyOnClose) TvRemote.standbyAsync(context, settings)
+                                // 막대를 닫으면 음악도 멈춘다. 셋탑으로 캐스트 중이면 셋탑 스피커도 끌지 먼저 묻는다.
+                                when {
+                                    !showMusic -> showMusic = true
+                                    NowPlaying.track.value?.remote == true -> askCastOff = true
+                                    else -> {
+                                        if (musicPlaying) NowPlaying.pause()
+                                        showMusic = false
+                                    }
                                 }
-                                showMusic = !showMusic
+                            }
+                            if (askCastOff) {
+                                CastOffDialog(
+                                    settings,
+                                    onDone = { askCastOff = false; showMusic = false },
+                                    onDismiss = { askCastOff = false },
+                                )
                             }
                             SquareButton(Icons.Outlined.Lightbulb, "기기", main, card, u, onClick = onOpenDevices)
                             SquareButton(Icons.Outlined.LightMode, "밝기", main, card, u) { showBrightness = true }

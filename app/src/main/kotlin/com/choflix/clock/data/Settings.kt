@@ -138,10 +138,6 @@ class Settings(context: Context) {
     var tvCertSha: String
         get() = p.getString("tvCertSha", "") ?: ""
         set(v) = p.edit().putString("tvCertSha", v).apply()
-    /** 캐스트 중에 음악 막대를 닫으면 셋탑도 대기로. */
-    var tvStandbyOnClose: Boolean
-        get() = p.getBoolean("tvStandbyOnClose", true)
-        set(v) = p.edit().putBoolean("tvStandbyOnClose", v).apply()
     val tvPaired: Boolean
         get() = tvHost.isNotEmpty() && tvCertSha.isNotEmpty()
 

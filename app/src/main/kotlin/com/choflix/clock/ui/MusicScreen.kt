@@ -57,6 +57,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.choflix.clock.data.NowPlaying
+import com.choflix.clock.data.TvRemote
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import com.choflix.clock.data.Settings
 import kotlinx.coroutines.delay
 
@@ -211,6 +216,25 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
             delay(2000)
         }
     }
+    val settings = remember { Settings(context) }
+    // 캐스트 버튼 확인 창: true = 켤까요, false = 끌까요, null = 닫힘.
+    var castAsk by remember { mutableStateOf<Boolean?>(null) }
+    when (castAsk) {
+        true -> ConfirmDialog(
+            "셋탑 스피커로 듣기",
+            "애플뮤직 재생 화면 아래의 캐스트 아이콘을 누르고 'U+tv Soundbar' 를 고르면 됩니다.\n\n" +
+                if (settings.tvPaired) "셋탑 스피커를 켜고 애플뮤직으로 갈까요?"
+                else "셋탑 리모컨이 연결되어 있지 않아 셋탑은 켜지 않습니다(설정 → 셋탑 리모컨). 애플뮤직으로 갈까요?",
+            onConfirm = {
+                castAsk = null
+                if (settings.tvPaired) TvRemote.wakeAsync(context, settings)
+                openAppleMusic(context)
+            },
+            onDismiss = { castAsk = null },
+        )
+        false -> CastOffDialog(settings, onDone = { castAsk = null }, onDismiss = { castAsk = null })
+        null -> {}
+    }
     val pad = h * 0.1f
     Row(
         modifier.clip(RoundedCornerShape(h * 0.2f)).background(Color(0xFF141414).copy(alpha = 0.5f))
@@ -253,14 +277,14 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
                         )
                     }
                 }
-                // 캐스트: 연결돼 있으면(세션이 원격) 분홍으로 켜짐, 아니면 옅게. 셋탑이 대기로 가도 애플뮤직이 연결로
-                // 남겨 두기도 한다. 애플뮤직은 셋탑을 안드로이드 '미디어 출력' 창에 내놓지 않아(폰 스피커만 보임,
-                // v1.5.2 실사용) 누르면 애플뮤직 재생 화면을 열고, 거기 캐스트 버튼으로 고른다.
+                // 캐스트: 연결돼 있으면(세션이 원격) 분홍으로 켜짐, 아니면 옅게. 누르면 셋탑 스피커를 켤지/끌지 묻는다.
+                // 켜기는 셋탑을 깨우고 애플뮤직을 연다 — 애플뮤직은 셋탑을 안드로이드 '미디어 출력' 창에 내놓지 않아
+                // (폰 스피커만 보임, v1.5.2 실사용) 캐스트 기기는 애플뮤직 안에서 골라야 한다.
                 RoundButton(
                     if (t.remote) Icons.Filled.CastConnected else Icons.Filled.Cast, "캐스트",
                     if (t.remote) color else color.copy(alpha = 0.45f), h * 0.48f,
                     active = if (t.remote) distinctFrom(color, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
-                ) { openAppleMusic(context) }
+                ) { castAsk = !t.remote }
                 RoundButton(Icons.Filled.SkipPrevious, "이전 곡", color, h * 0.55f) { NowPlaying.previous() }
                 RoundButton(if (t.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow, "재생/멈춤", color, h * 0.72f) { NowPlaying.playPause() }
                 RoundButton(Icons.Filled.SkipNext, "다음 곡", color, h * 0.55f) { NowPlaying.next() }
@@ -299,3 +323,33 @@ private fun Chip(label: String, color: Color, onClick: () -> Unit) {
 }
 
 private const val IDLE_MS = 60_000L
+
+/** 셋탑 스피커를 끌까요? — 확인이면 음악을 멈추고 셋탑을 대기로. */
+@Composable
+internal fun CastOffDialog(settings: Settings, onDone: () -> Unit, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    ConfirmDialog(
+        "셋탑 스피커 끄기",
+        if (settings.tvPaired) "음악을 멈추고 셋탑 스피커를 끌까요?"
+        else "셋탑 리모컨이 연결되어 있지 않아 음악만 멈춥니다(설정 → 셋탑 리모컨). 멈출까요?",
+        onConfirm = {
+            NowPlaying.pause()
+            if (settings.tvPaired) TvRemote.standbyAsync(context, settings)
+            onDone()
+        },
+        onDismiss = onDismiss,
+    )
+}
+
+@Composable
+internal fun ConfirmDialog(title: String, text: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    MaterialTheme(colorScheme = darkColorScheme()) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text(title) },
+            text = { Text(text) },
+            confirmButton = { TextButton(onClick = onConfirm) { Text("확인") } },
+            dismissButton = { TextButton(onClick = onDismiss) { Text("취소") } },
+        )
+    }
+}
