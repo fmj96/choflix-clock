@@ -232,7 +232,7 @@ internal fun MusicBar(color: Color, h: Dp, onOpenFull: () -> Unit, modifier: Mod
             },
             onDismiss = { castAsk = null },
         )
-        false -> CastOffDialog(settings, onDone = { castAsk = null }, onDismiss = { castAsk = null })
+        false -> CastOffDialog(settings, onDone = { castAsk = null }, onDismiss = { castAsk = null }, castOnly = true)
         null -> {}
     }
     val pad = h * 0.1f
@@ -327,9 +327,14 @@ private const val IDLE_MS = 60_000L
 /**
  * 셋탑 스피커를 끌까요? — 확인이면 음악을 멈추고 셋탑을 대기로.
  * [onMusicOnly] 를 주면(음표 버튼에서) '음악만 종료' 버튼도 둔다 — 음악만 멈추고 셋탑은 그대로.
+ * [castOnly] 면(캐스트 버튼에서) '캐스트만 해제' 버튼도 둔다 — 캐스트를 끊는 건 애플뮤직만 할 수 있어
+ * 방법을 알려 주고 애플뮤직 재생 화면을 연다.
  */
 @Composable
-internal fun CastOffDialog(settings: Settings, onDone: () -> Unit, onDismiss: () -> Unit, onMusicOnly: (() -> Unit)? = null) {
+internal fun CastOffDialog(
+    settings: Settings, onDone: () -> Unit, onDismiss: () -> Unit,
+    onMusicOnly: (() -> Unit)? = null, castOnly: Boolean = false,
+) {
     val context = LocalContext.current
     MaterialTheme(colorScheme = darkColorScheme()) {
         AlertDialog(
@@ -352,6 +357,16 @@ internal fun CastOffDialog(settings: Settings, onDone: () -> Unit, onDismiss: ()
                 Row {
                     if (onMusicOnly != null && settings.tvPaired) {
                         TextButton(onClick = { NowPlaying.pause(); onMusicOnly() }) { Text("음악만 종료") }
+                    }
+                    if (castOnly) {
+                        TextButton(onClick = {
+                            onDismiss()
+                            android.widget.Toast.makeText(
+                                context, "애플뮤직 아래 캐스트 아이콘 → '연결 해제'(또는 이 휴대전화)를 누르세요",
+                                android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                            openAppleMusic(context)
+                        }) { Text("캐스트만 해제") }
                     }
                     TextButton(onClick = onDismiss) { Text("취소") }
                 }
