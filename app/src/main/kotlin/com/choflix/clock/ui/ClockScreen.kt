@@ -268,11 +268,11 @@ fun ClockScreen(
                                 Icons.Outlined.MusicNote, "음악", main, card, u,
                                 active = if (showMusic) distinctFrom(main, Color(0xFFFF5A78), Color(0xFFFFB3C1)) else null,
                             ) {
-                                // 막대를 닫으면 음악도 멈춘다. 셋탑으로 캐스트 중이었으면 셋탑도 대기로(설정에서 짝지었을 때).
+                                // 막대를 닫으면 음악도 멈추고 셋탑도 대기로(설정에서 짝지었을 때). 캐스트 여부는 보지 않는다 —
+                                // 애플뮤직의 '원격' 표시는 늦거나 남아 있어 믿기 어렵다.
                                 if (showMusic) {
-                                    val casting = NowPlaying.track.value?.remote == true
                                     if (musicPlaying) NowPlaying.pause()
-                                    if (casting && settings.tvPaired && settings.tvStandbyOnClose) TvRemote.standbyAsync(context, settings)
+                                    if (settings.tvPaired && settings.tvStandbyOnClose) TvRemote.standbyAsync(context, settings)
                                 }
                                 showMusic = !showMusic
                             }

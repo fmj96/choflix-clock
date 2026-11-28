@@ -57,7 +57,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.choflix.clock.data.NowPlaying
-import com.choflix.clock.service.LandscapeLock
 import com.choflix.clock.data.Settings
 import kotlinx.coroutines.delay
 
@@ -189,8 +188,6 @@ fun MusicScreen(settings: Settings, onClose: () -> Unit) {
 
 /** 애플뮤직을 연다. 깔려 있지 않으면 플레이스토어. */
 internal fun openAppleMusic(context: Context) {
-    // 휴대폰 애플뮤직은 세로만 된다 — 설정에서 켜 두면 가로로 돌려 연다(시계로 돌아오면 풀림).
-    if (Settings(context).musicLandscape) LandscapeLock.hold(context)
     if (NowPlaying.openPlayer()) return
     val i = context.packageManager.getLaunchIntentForPackage(NowPlaying.APPLE_MUSIC)
         ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=${NowPlaying.APPLE_MUSIC}"))

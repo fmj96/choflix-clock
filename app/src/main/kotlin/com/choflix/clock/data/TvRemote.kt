@@ -196,10 +196,12 @@ object TvRemote {
                 }
             }
             if (!ready) throw IOException("셋탑이 응답하지 않습니다")
-            val result = when (on) {
-                false -> return@use "셋탑이 이미 대기 상태입니다"
-                true -> { key(sock, KEY_POWER); "셋탑을 대기로 바꿨습니다" }
-                null -> { key(sock, KEY_SLEEP); "셋탑에 대기 명령을 보냈습니다" }
+            // 켜져 있다고 하면 전원 키(누를 때마다 켜짐/꺼짐이라 켜져 있을 때만). 아니면 잠자기 키 — 이미 자고 있으면
+            // 아무 일도 없다. 캐스트로 음악만 나올 때 셋탑이 '꺼짐'으로 알려 와 그냥 두던 것(v1.6.x 실사용) 때문.
+            val result = if (on == true) {
+                key(sock, KEY_POWER); "셋탑을 대기로 바꿨습니다"
+            } else {
+                key(sock, KEY_SLEEP); "셋탑에 대기 명령을 보냈습니다"
             }
             Thread.sleep(500) // 끊기 전에 키가 건너가게.
             result
